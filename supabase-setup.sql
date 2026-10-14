@@ -127,3 +127,130 @@ grant insert, update, delete on public.prayer_edits to authenticated;
 drop trigger if exists prayer_edits_touch on public.prayer_edits;
 create trigger prayer_edits_touch before insert or update on public.prayer_edits
   for each row execute function public.touch_updated_at();
+
+-- =====================================================================
+-- v3 — Admin console: roles, book drafts & published versions, user tools.
+-- Safe to run again. Run AFTER v2 above.
+-- =====================================================================
+
+alter table public.admins add column if not exists role text not null default 'admin';
+alter table public.admins drop constraint if exists admins_role_check;
+alter table public.admins add constraint admins_role_check check (role in ('editor', 'admin'));
+
+create or replace function public.is_admin() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.admins where user_id = auth.uid() and role = 'admin')
+$$;
+create or replace function public.is_editor() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.admins where user_id = auth.uid() and role in ('editor', 'admin'))
+$$;
+
+drop policy if exists "admins read usage" on public.usage_daily;
+create policy "admins read usage" on public.usage_daily for select using (public.is_editor());
+
+-- Working draft of the book (one row).
+create table if not exists public.book_draft (
+  id int primary key default 1 check (id = 1),
+  data jsonb not null,
+  log jsonb not null default '[]'::jsonb,
+  base_version int not null default 0,
+  updated_by uuid references auth.users on delete set null,
+  updated_at timestamptz not null default now()
+);
+alter table public.book_draft enable row level security;
+drop policy if exists "editors all draft" on public.book_draft;
+create policy "editors all draft" on public.book_draft for all using (public.is_editor()) with check (public.is_editor());
+grant select, insert, update, delete on public.book_draft to authenticated;
+drop trigger if exists book_draft_touch on public.book_draft;
+create trigger book_draft_touch before insert or update on public.book_draft
+  for each row execute function public.touch_updated_at();
+
+-- Published versions. Readers download the newest one.
+create table if not exists public.book_versions (
+  version int primary key,
+  data jsonb not null,
+  layout jsonb not null,
+  stats jsonb not null default '{}'::jsonb,
+  note text,
+  published_by uuid references auth.users on delete set null,
+  published_by_email text,
+  published_at timestamptz not null default now()
+);
+alter table public.book_versions enable row level security;
+drop policy if exists "anyone reads versions" on public.book_versions;
+create policy "anyone reads versions" on public.book_versions for select using (true);
+grant select on public.book_versions to anon, authenticated;
+
+create or replace function public.publish_book(p_note text, p_data jsonb, p_layout jsonb, p_stats jsonb) returns int
+language plpgsql security definer set search_path = public as $$
+declare v int;
+begin
+  if not public.is_editor() then raise exception 'not allowed'; end if;
+  lock table public.book_versions in exclusive mode;
+  select coalesce(max(version), 0) + 1 into v from public.book_versions;
+  insert into public.book_versions (version, data, layout, stats, note, published_by, published_by_email)
+    values (v, p_data, p_layout, p_stats, nullif(trim(p_note), ''), auth.uid(), (select email from auth.users where id = auth.uid()));
+  insert into public.book_draft (id, data, log, base_version, updated_by) values (1, p_data, '[]', v, auth.uid())
+    on conflict (id) do update set data = excluded.data, log = '[]', base_version = v, updated_by = auth.uid();
+  return v;
+end $$;
+revoke all on function public.publish_book(text, jsonb, jsonb, jsonb) from public, anon;
+grant execute on function public.publish_book(text, jsonb, jsonb, jsonb) to authenticated;
+
+-- Users list for admins. Pen-note drawings are left out to keep it light.
+create or replace function public.admin_users()
+returns table (user_id uuid, email text, name text, created_at timestamptz, last_sign_in_at timestamptz,
+  is_member boolean, role text, state_at timestamptz, ink_pages int, data jsonb)
+language plpgsql stable security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  return query
+  select u.id, u.email::text,
+    coalesce(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name')::text,
+    u.created_at, u.last_sign_in_at,
+    exists (select 1 from public.members m where m.user_id = u.id),
+    (select a.role from public.admins a where a.user_id = u.id),
+    s.updated_at,
+    coalesce((select count(*)::int from jsonb_object_keys(coalesce(s.data->'ink', '{}'::jsonb))), 0),
+    coalesce(s.data, '{}'::jsonb) - 'ink'
+  from auth.users u left join public.book_state s on s.user_id = u.id
+  order by u.created_at desc;
+end $$;
+revoke all on function public.admin_users() from public, anon;
+grant execute on function public.admin_users() to authenticated;
+
+create or replace function public.admin_set_role(p_user uuid, p_role text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  if p_user = auth.uid() and coalesce(p_role, '') <> 'admin' then raise exception 'You cannot remove your own admin access.'; end if;
+  if p_role is null or p_role = '' then
+    delete from public.admins where user_id = p_user;
+  elsif p_role in ('editor', 'admin') then
+    insert into public.admins (user_id, role) values (p_user, p_role) on conflict (user_id) do update set role = excluded.role;
+  else raise exception 'bad role'; end if;
+end $$;
+revoke all on function public.admin_set_role(uuid, text) from public, anon;
+grant execute on function public.admin_set_role(uuid, text) to authenticated;
+
+-- Reset: wipes progress and leaves a marker so the user's devices clear too.
+create or replace function public.admin_reset_user(p_user uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  insert into public.book_state (user_id, data) values (p_user, jsonb_build_object('reset', extract(epoch from now())::bigint))
+    on conflict (user_id) do update set data = jsonb_build_object('reset', extract(epoch from now())::bigint, 'bv', public.book_state.data->'bv');
+end $$;
+revoke all on function public.admin_reset_user(uuid) from public, anon;
+grant execute on function public.admin_reset_user(uuid) to authenticated;
+
+create or replace function public.admin_delete_user(p_user uuid) returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  if p_user = auth.uid() then raise exception 'You cannot delete your own account here.'; end if;
+  delete from auth.users where id = p_user;
+end $$;
+revoke all on function public.admin_delete_user(uuid) from public, anon;
+grant execute on function public.admin_delete_user(uuid) to authenticated;
