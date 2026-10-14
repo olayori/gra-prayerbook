@@ -1,6 +1,6 @@
 {
-  "name": "Book of Covenant Prayers",
-  "short_name": "Prayers",
+  "name": "GRA Prayer Library",
+  "short_name": "GRA Prayer",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

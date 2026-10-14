@@ -254,3 +254,71 @@ begin
 end $$;
 revoke all on function public.admin_delete_user(uuid) from public, anon;
 grant execute on function public.admin_delete_user(uuid) to authenticated;
+
+
+-- =====================================================================
+-- GRA Weekly Kingdom Prayers (run this section once)
+-- =====================================================================
+create table if not exists public.weekly_prayers (
+  id uuid primary key default gen_random_uuid(),
+  week_of date not null unique,
+  title text not null default 'Weekly Kingdom Prayers',
+  intro text not null default '',
+  prayers jsonb not null default '[]'::jsonb,
+  closing text not null default '',
+  publish_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by_email text
+);
+alter table public.weekly_prayers enable row level security;
+drop policy if exists "readers see live weeks" on public.weekly_prayers;
+drop policy if exists "editors all weeks" on public.weekly_prayers;
+create policy "readers see live weeks" on public.weekly_prayers for select
+  using (publish_at is not null and publish_at <= now());
+create policy "editors all weeks" on public.weekly_prayers for all
+  using (public.is_editor()) with check (public.is_editor());
+grant select on public.weekly_prayers to anon, authenticated;
+grant insert, update, delete on public.weekly_prayers to authenticated;
+drop trigger if exists weekly_prayers_touch on public.weekly_prayers;
+create trigger weekly_prayers_touch before update on public.weekly_prayers
+  for each row execute function public.touch_updated_at();
+
+
+-- =====================================================================
+-- GRA Prayer Library: progress for the other books (run this section once)
+-- =====================================================================
+create table if not exists public.library_state (
+  user_id uuid not null references auth.users on delete cascade,
+  book text not null,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, book)
+);
+alter table public.library_state enable row level security;
+drop policy if exists "members read own library" on public.library_state;
+drop policy if exists "members insert own library" on public.library_state;
+drop policy if exists "members update own library" on public.library_state;
+create policy "members read own library" on public.library_state for select
+  using (auth.uid() = user_id and exists (select 1 from public.members m where m.user_id = auth.uid()));
+create policy "members insert own library" on public.library_state for insert
+  with check (auth.uid() = user_id and exists (select 1 from public.members m where m.user_id = auth.uid()));
+create policy "members update own library" on public.library_state for update
+  using (auth.uid() = user_id and exists (select 1 from public.members m where m.user_id = auth.uid()))
+  with check (auth.uid() = user_id);
+grant select, insert, update on public.library_state to authenticated;
+drop trigger if exists library_state_touch on public.library_state;
+create trigger library_state_touch before update on public.library_state
+  for each row execute function public.touch_updated_at();
+
+-- Reset now clears every book, not just Covenant Prayers.
+create or replace function public.admin_reset_user(p_user uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed'; end if;
+  insert into public.book_state (user_id, data) values (p_user, jsonb_build_object('reset', extract(epoch from now())::bigint))
+    on conflict (user_id) do update set data = jsonb_build_object('reset', extract(epoch from now())::bigint, 'bv', public.book_state.data->'bv');
+  update public.library_state set data = jsonb_build_object('reset', extract(epoch from now())::bigint) where user_id = p_user;
+end $$;
+revoke all on function public.admin_reset_user(uuid) from public, anon;
+grant execute on function public.admin_reset_user(uuid) to authenticated;
