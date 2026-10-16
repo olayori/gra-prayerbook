@@ -1,5 +1,5 @@
-const C='gra-prayers-v27';
-const CORE=['./','./index.html','./covenant/','./jcfp/','./weekly/','./read/','./books/rooted.json','./prayers.json','./jcfp.json','./i18n-fr.json','./i18n-es.json','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
+const C='gra-prayers-v28';
+const CORE=['./','./index.html','./covenant/','./jcfp/','./weekly/','./read/','./bible/','./books/rooted.json','./prayers.json','./jcfp.json','./i18n-fr.json','./i18n-es.json','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 const EXTRA=['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>Promise.all(CORE.map(u=>c.add(u).catch(()=>{}))).then(()=>Promise.all(EXTRA.map(u=>c.add(u).catch(()=>{}))))));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C&&x!=='gra-book').map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});
