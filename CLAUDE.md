@@ -23,6 +23,7 @@ GRA prayer library: a PWA on GitHub Pages (https://olayori.github.io/overcomers/
 | `npm run verify` | site checks, app unit tests, app build, browser tests (Supabase blocked or mocked) |
 | `npm run app:dev` | app dev server (Vite) |
 | `npm run design:pull -- <export(s)>` | import Claude Design exports (see the `pull-design` skill) |
+| `npm run db:start` / `db:reset` / `db:test` | local Supabase (needs Docker Desktop running): start it, re-apply all migrations, run the pgTAP tests in `supabase/tests/` |
 | `npm run db:new <name>` | new migration |
 | `npm run db:deploy` | push migrations to production (see the `deploy` skill) |
 | `npm run web:deploy` | deploy site/ via GitHub Pages and confirm it is live |

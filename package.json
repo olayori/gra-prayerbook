@@ -22,7 +22,10 @@
     "db:link": "[ -f supabase/.temp/project-ref ] || supabase link --project-ref sjcosqxtgllfwldhnoax",
     "app:dev": "npm run dev -w app",
     "app:build": "npm run build -w app",
-    "app:test": "npm run test -w app"
+    "app:test": "npm run test -w app",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
