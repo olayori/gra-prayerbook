@@ -132,6 +132,87 @@ test.describe('book reader', () => {
   });
 });
 
+// Speech that "finishes" each chunk after 30ms, so read-aloud can be tested headless.
+const fakeSpeech = (page) =>
+  page.addInitScript(() => {
+    const spoken = (window.__spoken = []);
+    let timer;
+    const fake = {
+      getVoices: () => [],
+      speak(u) {
+        spoken.push(u.text);
+        timer = setTimeout(() => u.onend && u.onend(), 30);
+      },
+      cancel() {
+        clearTimeout(timer);
+      },
+    };
+    // speechSynthesis is a read-only accessor, so it has to be redefined, not assigned.
+    Object.defineProperty(window, 'speechSynthesis', { value: fake, configurable: true });
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      value: function (text) {
+        this.text = text;
+      },
+      configurable: true,
+    });
+  });
+
+test.describe('Focused Mode and Listen', () => {
+  test.beforeEach(({ page }) => unlock(page));
+
+  test('Focused Mode: one prayer at a time, Amen · Next marks it prayed, timer, close', async ({ page }) => {
+    await page.goto('app/#/book/covenant');
+    await page.locator('.toc-sec').first().click();
+    await page.locator('#s-1-1').getByRole('button', { name: 'Focused Mode' }).click();
+    const focus = page.getByRole('dialog', { name: 'Focused Mode' });
+    await expect(focus.locator('.focus-kicker')).toHaveText(/^1\.1 · Prayer 1 of \d+$/);
+
+    await focus.getByRole('button', { name: 'Amen · Next' }).click();
+    await expect(focus.locator('.focus-kicker')).toHaveText(/^1\.1 · Prayer 2 of \d+$/);
+    await expect(focus.locator('.focus-count')).toContainText('1');
+    await page.keyboard.press('ArrowLeft');
+    await expect(focus.locator('.focus-kicker')).toHaveText(/^1\.1 · Prayer 1 of \d+$/);
+
+    await focus.getByRole('button', { name: 'Prayer timer' }).click();
+    await focus.getByRole('button', { name: '30s', exact: true }).click();
+    await expect(focus.getByRole('button', { name: 'Prayer timer' })).toContainText('0:30');
+    await page.keyboard.press('Escape');
+    await expect(focus).toHaveCount(0);
+    await expect(page.locator('#s-1-1-1').getByRole('button', { name: /Prayed — tap to undo/ })).toBeVisible();
+  });
+
+  test('tapping a prayer opens it in Focused Mode', async ({ page }) => {
+    await page.goto('app/#/book/covenant');
+    await page.locator('.toc-sec').first().click();
+    await page.locator('#s-1-1-3 .prayer-text').click();
+    await expect(page.getByRole('dialog', { name: 'Focused Mode' }).locator('.focus-kicker')).toHaveText(/^1\.1 · Prayer 3 of \d+$/);
+  });
+
+  test('Listen reads the section aloud, checks off prayers and shows the player', async ({ page }) => {
+    await fakeSpeech(page);
+    await page.goto('app/#/book/covenant');
+    await page.locator('.toc-sec').first().click();
+    await page.locator('#s-1-1').getByRole('button', { name: 'Listen' }).click();
+
+    // Foundation first, then prayers; each prayer is checked off once read.
+    await expect(page.locator('#s-1-1-2').getByRole('button', { name: /Prayed — tap to undo/ })).toBeVisible();
+    const spoken = await page.evaluate(() => window.__spoken);
+    expect(spoken[0]).toMatch(/Scripture foundation/);
+    expect(spoken.some((t) => t.startsWith('Prayer 1.'))).toBe(true);
+
+    const mini = page.locator('.np-mini');
+    await mini.getByRole('button', { name: 'Pause', exact: true }).click();
+    await expect(mini.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+    await mini.getByRole('button', { name: 'Open player' }).click();
+    const sheet = page.getByRole('dialog', { name: 'Now playing' });
+    await expect(sheet).toContainText('Book of Covenant Prayers');
+    await sheet.getByRole('button', { name: /× Speed/ }).click();
+    await expect(sheet.getByRole('button', { name: /× Speed/ })).toContainText('1.2× Speed');
+    await sheet.getByRole('button', { name: 'Stop and close' }).click();
+    await expect(page.locator('.np-mini')).toHaveCount(0);
+  });
+});
+
 // The app and the live site share progress (same storage keys), so nobody loses
 // anything when the app replaces the site.
 test.describe('shared progress with the live site', () => {

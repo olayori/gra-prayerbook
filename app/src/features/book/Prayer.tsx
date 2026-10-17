@@ -1,19 +1,24 @@
-import { BookOpen, Check, Star } from '../../components/icons.tsx'
+import { BookOpen, Check, Speaker, Star } from '../../components/icons.tsx'
 import type { PrayerView } from './model.ts'
 import type { Scripture as ScriptureT } from './types.ts'
 
 type Props = {
   p: PrayerView
+  reading: boolean
   onToggle: () => void
   onFav: () => void
   onVerse: (sc: ScriptureT) => void
+  onFocus: () => void
+  onListen?: () => void
 }
 
-// One numbered prayer (<li data-prayer> in the design).
-// Not yet ported: share, read aloud, tap to open in Focused Mode.
-export default function Prayer({ p, onToggle, onFav, onVerse }: Props) {
+// Selecting text shouldn't open Focused Mode.
+const selecting = () => String(window.getSelection?.() ?? '').length > 0
+
+// One numbered prayer (<li data-prayer> in the design). Not yet ported: share.
+export default function Prayer({ p, reading, onToggle, onFav, onVerse, onFocus, onListen }: Props) {
   return (
-    <li id={p.id} className="prayer">
+    <li id={p.id} className={reading ? 'prayer reading' : 'prayer'}>
       <div className="prayer-gutter">
         <span className="prayer-n">{p.n}</span>
         <button
@@ -29,7 +34,9 @@ export default function Prayer({ p, onToggle, onFav, onVerse }: Props) {
         </button>
       </div>
       <div className="prayer-body">
-        <p>{p.text}</p>
+        <p className="prayer-text" onClick={() => !selecting() && onFocus()} title="Open in Focused Mode">
+          {p.text}
+        </p>
         {p.showScripture &&
           p.scripture.map((sc, i) => (
             <div key={i} className="prayer-scripture">
@@ -66,6 +73,11 @@ export default function Prayer({ p, onToggle, onFav, onVerse }: Props) {
           >
             <Star on={p.fav} />
           </button>
+          {onListen && (
+            <button className={reading ? 'icon-btn listen on' : 'icon-btn listen'} onClick={onListen} aria-label="Read aloud from here" title="Read aloud from here">
+              <Speaker size={19} short />
+            </button>
+          )}
         </div>
       </div>
     </li>

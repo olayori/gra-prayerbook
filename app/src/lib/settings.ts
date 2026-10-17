@@ -11,9 +11,22 @@ export type Settings = {
   theme: Theme
   lastLight: 'light' | 'sepia'
   verses: boolean
+  // Read aloud
+  rate: number
+  voice: string
+  ttsGap: number
+  ttsVerses: boolean
+  ttsMark: boolean
+  // Focused Mode timer
+  sessAuto: boolean
+  sessChime: boolean
 }
 
-export const DEFAULTS: Settings = { size: 17, lh: 1.6, font: 'book', ls: 'normal', theme: 'auto', lastLight: 'light', verses: true }
+// Same names and defaults as the live site's settings (gra-covenant-settings).
+export const DEFAULTS: Settings = {
+  size: 17, lh: 1.6, font: 'book', ls: 'normal', theme: 'auto', lastLight: 'light', verses: true,
+  rate: 1, voice: '', ttsGap: 0, ttsVerses: false, ttsMark: true, sessAuto: true, sessChime: true,
+}
 
 export const FONTS: Record<Settings['font'], string> = {
   book: 'var(--font-body)',

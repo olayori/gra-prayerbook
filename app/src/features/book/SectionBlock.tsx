@@ -1,15 +1,25 @@
-import { Bookmark, CheckAll } from '../../components/icons.tsx'
+import { ttsSupported } from '../../lib/speech.ts'
+import { Bookmark, CheckAll, FocusIcon, Speaker } from '../../components/icons.tsx'
 import Logo from './Logo.tsx'
 import type { SectionView } from './model.ts'
 import Prayer from './Prayer.tsx'
 import type { BookStore } from './store.ts'
 import type { Scripture } from './types.ts'
 
-type Props = { s: SectionView; store: BookStore; toast: (t: string) => void; onVerse: (sc: Scripture) => void }
+type Props = {
+  s: SectionView
+  store: BookStore
+  readingPid: string | null
+  toast: (t: string) => void
+  onVerse: (sc: Scripture) => void
+  onFocus: (sid: string, i?: number) => void
+  onListen: (sid: string, pid?: string) => void
+}
 
 // A section (<article data-sec> in the design): header, scripture foundation,
 // prayers or a prayer list, and the closing ornament.
-export default function SectionBlock({ s, store, toast, onVerse }: Props) {
+export default function SectionBlock({ s, store, readingPid, toast, onVerse, onFocus, onListen }: Props) {
+  const tts = ttsSupported()
   const allDone = s.total > 0 && s.done === s.total
   return (
     <article id={s.id} className={s.compact ? 'section compact' : 'section'}>
@@ -27,10 +37,20 @@ export default function SectionBlock({ s, store, toast, onVerse }: Props) {
                 <CheckAll />
                 <span>{allDone ? 'Clear section' : 'Mark all prayed'}</span>
               </button>
+              <button className="btn btn-ghost" onClick={() => onFocus(s.id)}>
+                <FocusIcon />
+                <span>Focused Mode</span>
+              </button>
               <button className="btn btn-ghost" onClick={() => toast(store.toggleBm(s.id) ? 'Bookmarked' : 'Bookmark removed')}>
                 <Bookmark on={s.bookmarked} />
                 <span>{s.bookmarked ? 'Bookmarked' : 'Bookmark'}</span>
               </button>
+              {tts && (
+                <button className="btn btn-ghost" onClick={() => onListen(s.id)}>
+                  <Speaker />
+                  <span>Listen</span>
+                </button>
+              )}
             </div>
           )}
         </header>
@@ -75,10 +95,13 @@ export default function SectionBlock({ s, store, toast, onVerse }: Props) {
         <>
           {s.showItemsLabel && <div className="eyebrow items-label">{s.itemsLabel}</div>}
           <ol className="prayers">
-            {s.prayers.map((p) => (
+            {s.prayers.map((p, idx) => (
               <Prayer
                 key={p.id}
                 p={p}
+                reading={readingPid === p.id}
+                onFocus={() => onFocus(s.id, idx)}
+                onListen={tts ? () => onListen(s.id, p.id) : undefined}
                 onToggle={() => store.toggle(p.id)}
                 onFav={() => toast(store.toggleFav(p.id) ? 'Added to favorites' : 'Removed from favorites')}
                 onVerse={onVerse}

@@ -2,24 +2,27 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import Sheet from '../../components/Sheet.tsx'
 import { useToast } from '../../components/Toast.tsx'
-import { ArrowRight, ArrowUp, Bookmark, CheckAll, ChevronLeft, DoneCircle, Gear, Moon, Ring, Sun } from '../../components/icons.tsx'
+import { ArrowRight, ArrowUp, Bookmark, CheckAll, ChevronLeft, DoneCircle, FocusIcon, Gear, Moon, Ring, Speaker, Sun } from '../../components/icons.tsx'
 import { useAuth } from '../../lib/auth.ts'
 import { FONTS, useSettings } from '../../lib/settings.ts'
+import { ttsSupported } from '../../lib/speech.ts'
 import { supabase } from '../../lib/supabase.ts'
 import { fetchWeeks } from '../weekly/api.ts'
 import { weekLabel, type Week } from '../weekly/week.ts'
 import { BOOKS, isBookKey, loadBook, type BookConfig } from './books.ts'
+import Focus, { type FocusStart } from './Focus.tsx'
+import { Listener } from './listen.ts'
 import LockScreen from './LockScreen.tsx'
 import Logo from './Logo.tsx'
 import { buildBook, ringDash, type BookView, type PartView } from './model.ts'
 import SectionBlock from './SectionBlock.tsx'
+import NowPlaying from './NowPlaying.tsx'
 import SettingsSheet from './SettingsSheet.tsx'
 import { BookStore } from './store.ts'
 import type { Scripture } from './types.ts'
 
 // Port of the book reader (design/src/book) for Covenant Prayers and JCFP.
-// Not yet ported: Focused Mode, Listen, share, search, plans, saved/history sheets,
-// pen and paged mode. See CLAUDE.md for the porting order.
+// Not yet ported: share, search, plans, saved/history sheets, pen and paged mode. See CLAUDE.md for the porting order.
 export default function Reader() {
   const { book } = useParams()
   if (book === 'weekly') return <Navigate to="/weekly" replace />
@@ -79,6 +82,8 @@ function BookPages({ book, store }: { book: BookConfig; store: BookStore }) {
   const { settings, set, dark } = useSettings()
   const [toast, showToast] = useToast()
   const [sheet, setSheet] = useState<'aa' | Scripture | null>(null)
+  const [focus, setFocus] = useState<FocusStart | null>(null)
+  const weeks = useWeeks(book.key === 'jcfp')
   useEffect(() => store.setToastHandler(showToast), [store, showToast])
   // Re-rendered by the store subscription in BookReader; building the view is cheap.
   const view = buildBook(book, store.data, { prayed: store.prayed, fav: store.fav, bm: store.bm }, settings.verses)
@@ -88,8 +93,33 @@ function BookPages({ book, store }: { book: BookConfig; store: BookStore }) {
     if (!el) return
     const h = document.querySelector<HTMLElement>('.reader-hdr')?.offsetHeight ?? 56
     const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches
-    scrollTo({ top: el.getBoundingClientRect().top + scrollY - h - 8, behavior: smooth ? 'smooth' : 'auto' })
+    scrollTo({ top: el.getBoundingClientRect().top + scrollY - h - 12, behavior: smooth ? 'smooth' : 'auto' })
   }
+
+  // Read aloud.
+  const [listener] = useState(
+    () =>
+      new Listener({
+        key: book.key,
+        title: book.title,
+        data: () => store.data,
+        isPrayed: (pid) => !!store.prayed[pid],
+        markPrayed: (pid) => store.setMany([pid], true),
+        logOpen: (sid) => store.logUse('open', [sid]),
+        toast: showToast,
+        scrollTo: (id) => goto(id),
+      }, settings),
+  )
+  useEffect(() => listener.setSettings(settings), [listener, settings])
+  useSyncExternalStore(listener.subscribe, () => listener.version)
+  useEffect(() => () => listener.stop(), [listener])
+  const listen = (sid: string, pid?: string) => listener.start(sid, pid)
+  const openFocus = (sid: string, i?: number) => {
+    listener.stop()
+    setFocus({ sid, i })
+  }
+  const readingPid = listener.state?.pid ?? null
+  const weekly = (weeks?.[0]?.prayers ?? []).map((p) => ({ text: p.text, scripture: p.ref ? [{ ref: p.ref, verses: [] }] : [] }))
 
   return (
     <div
@@ -149,11 +179,20 @@ function BookPages({ book, store }: { book: BookConfig; store: BookStore }) {
 
       {view.parts.map((p) => (
         <div key={p.id}>
-          <PartIntro p={p} store={store} toast={showToast} />
+          <PartIntro p={p} store={store} toast={showToast} onFocus={openFocus} onListen={listen} />
           {p.sections.map((s) => (
-            <SectionBlock key={s.id} s={s} store={store} toast={showToast} onVerse={setSheet} />
+            <SectionBlock
+              key={s.id}
+              s={s}
+              store={store}
+              readingPid={readingPid}
+              toast={showToast}
+              onVerse={setSheet}
+              onFocus={openFocus}
+              onListen={listen}
+            />
           ))}
-          {p.weeklyAfter && <WeeklyInline />}
+          {p.weeklyAfter && <WeeklyInline weeks={weeks} onFocus={(i) => openFocus('wk', i)} />}
         </div>
       ))}
 
@@ -167,6 +206,21 @@ function BookPages({ book, store }: { book: BookConfig; store: BookStore }) {
         </button>
       </footer>
 
+      <NowPlaying listener={listener} bookKey={book.key} bookTitle={book.title} toast={showToast} />
+      {focus && (
+        <Focus
+          bookKey={book.key}
+          data={store.data}
+          store={store}
+          weekly={weekly}
+          start={focus}
+          toast={showToast}
+          onClose={(pid) => {
+            setFocus(null)
+            if (pid && !pid.startsWith('wk')) requestAnimationFrame(() => goto(pid))
+          }}
+        />
+      )}
       {sheet === 'aa' && <SettingsSheet store={store} onClose={() => setSheet(null)} />}
       {sheet && sheet !== 'aa' && (
         <Sheet title="Scripture" onClose={() => setSheet(null)}>
@@ -241,7 +295,16 @@ function Progress({ done, total }: { done: number; total: number }) {
   )
 }
 
-function PartIntro({ p, store, toast }: { p: PartView; store: BookStore; toast: (t: string) => void }) {
+type PartProps = {
+  p: PartView
+  store: BookStore
+  toast: (t: string) => void
+  onFocus: (sid: string, i?: number) => void
+  onListen: (sid: string) => void
+}
+
+function PartIntro({ p, store, toast, onFocus, onListen }: PartProps) {
+  const first = p.sections.find((s) => !s.isList)
   const all = p.total > 0 && p.done === p.total
   return (
     <section id={p.id} className="part-intro">
@@ -260,10 +323,20 @@ function PartIntro({ p, store, toast }: { p: PartView; store: BookStore; toast: 
             <CheckAll />
             <span>{all ? 'Clear watch' : 'Mark all prayed'}</span>
           </button>
+          <button className="btn btn-ghost" onClick={() => first && onFocus(first.id)}>
+            <FocusIcon />
+            <span>Focused Mode</span>
+          </button>
           <button className="btn btn-ghost" onClick={() => toast(store.toggleBm(p.id) ? 'Bookmarked' : 'Bookmark removed')}>
             <Bookmark on={p.bookmarked} />
             <span>{p.bookmarked ? 'Bookmarked' : 'Bookmark'}</span>
           </button>
+          {ttsSupported() && (
+            <button className="btn btn-ghost" onClick={() => onListen(p.id)}>
+              <Speaker />
+              <span>Listen</span>
+            </button>
+          )}
         </div>
       )}
       {p.done > 0 && (
@@ -283,18 +356,30 @@ function PartIntro({ p, store, toast }: { p: PartView; store: BookStore; toast: 
   )
 }
 
-// JCFP: this week's Kingdom Prayers, after the last prayer watch.
-function WeeklyInline() {
-  const [week, setWeek] = useState<Week | null | undefined>(undefined)
+// Published weekly prayers, newest first (undefined while loading, null if unavailable).
+function useWeeks(enabled: boolean) {
+  const [weeks, setWeeks] = useState<Week[] | null | undefined>(undefined)
   useEffect(() => {
-    fetchWeeks().then((w) => setWeek(w[0] ?? null), () => setWeek(null))
-  }, [])
+    if (enabled) fetchWeeks().then(setWeeks, () => setWeeks(null))
+  }, [enabled])
+  return weeks
+}
+
+// JCFP: this week's Kingdom Prayers, after the last prayer watch.
+function WeeklyInline({ weeks, onFocus }: { weeks: Week[] | null | undefined; onFocus: (i: number) => void }) {
+  const week = weeks === undefined ? undefined : (weeks?.[0] ?? null)
   return (
     <section id="weekly-kp" className="weekly-inline">
       <header className="section-hdr">
         <span className="eyebrow accent wide">GRA Weekly Kingdom Prayers</span>
         <h3 className="section-title">{week ? `Week of ${weekLabel(week.week_of)}` : 'This week'}</h3>
         <div className="actions">
+          {week && (
+            <button className="btn btn-ghost" onClick={() => onFocus(0)}>
+              <FocusIcon />
+              <span>Focused Mode</span>
+            </button>
+          )}
           <Link to="/weekly" className="btn btn-ghost">
             <span>All weeks</span>
             <ArrowRight />
@@ -306,7 +391,7 @@ function WeeklyInline() {
         {week?.prayers.map((wp, i) => (
           <li key={i} className="prayer plain">
             <span className="prayer-n">{i + 1}</span>
-            <div className="prayer-body">
+            <div className="prayer-body tappable" onClick={() => onFocus(i)} title="Open in Focused Mode">
               <p>{wp.text}</p>
               {wp.ref && <span className="weekly-ref">{wp.ref}</span>}
             </div>

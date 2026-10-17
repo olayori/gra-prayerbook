@@ -1,9 +1,11 @@
 import Sheet from '../../components/Sheet.tsx'
+import { useState } from 'react'
 import { auth, isGuest, useAuth } from '../../lib/auth.ts'
+import { Speaker, ttsSupported, voiceOptions, VOICE_HINT } from '../../lib/speech.ts'
 import { FONTS, useSettings, type Settings } from '../../lib/settings.ts'
 import type { BookStore, SyncState } from './store.ts'
 
-// The design's "Aa" sheet. Not yet ported: language, read-aloud voice.
+// The design's "Aa" sheet. Not yet ported: language.
 export default function SettingsSheet({ store, onClose }: { store: BookStore; onClose: () => void }) {
   const { settings: st, set } = useSettings()
   return (
@@ -66,6 +68,7 @@ export default function SettingsSheet({ store, onClose }: { store: BookStore; on
             </Opt>
           ))}
         </Group>
+        {ttsSupported() && <ReadAloud />}
       </div>
     </Sheet>
   )
@@ -144,5 +147,66 @@ function Account({ store, onClose }: { store: BookStore; onClose: () => void }) 
         Sign in or create account
       </button>
     </div>
+  )
+}
+
+function ReadAloud() {
+  const { settings: st, set } = useSettings()
+  const [speaker] = useState(() => new Speaker())
+  const voices = voiceOptions()
+  return (
+    <div className="setting read-aloud">
+      <span className="setting-label">Read aloud</span>
+      <div className="seg-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        {([[0.8, 'Slow'], [1, 'Normal'], [1.2, 'Fast'], [1.4, 'Faster']] as const).map(([v, label]) => (
+          <Opt key={v} on={(st.rate || 1) === v} onPick={() => set({ rate: v })} style={{ fontSize: 14 }}>
+            {label}
+          </Opt>
+        ))}
+      </div>
+      <select className="input" value={st.voice} onChange={(e) => set({ voice: e.target.value })} aria-label="Voice">
+        <option value="">Best available voice</option>
+        {voices.map((v) => (
+          <option key={v.id} value={v.id}>
+            {v.label}
+          </option>
+        ))}
+      </select>
+      <button className="btn btn-ghost sample" onClick={() => speaker.speak('The Lord is my shepherd; I shall not want.', { rate: st.rate, voice: st.voice }, () => {})}>
+        Hear a sample
+      </button>
+      <span className="hint">{VOICE_HINT}</span>
+      <div className="setting">
+        <span className="hint">Pause between prayers</span>
+        <div className="seg-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {([[0, 'None'], [2, '2 sec'], [5, '5 sec'], [10, '10 sec']] as const).map(([v, label]) => (
+            <Opt key={v} on={(st.ttsGap || 0) === v} onPick={() => set({ ttsGap: v })} style={{ fontSize: 14 }}>
+              {label}
+            </Opt>
+          ))}
+        </div>
+      </div>
+      <div>
+        <Check on={st.ttsVerses} onClick={() => set({ ttsVerses: !st.ttsVerses })}>
+          Read the scripture under each prayer
+        </Check>
+        <Check on={st.ttsMark} onClick={() => set({ ttsMark: !st.ttsMark })}>
+          Check off each prayer as it’s read
+        </Check>
+      </div>
+    </div>
+  )
+}
+
+function Check({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button className="check-row" onClick={onClick} aria-pressed={on}>
+      <span className={on ? 'check-box on' : 'check-box'}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      </span>
+      <span>{children}</span>
+    </button>
   )
 }

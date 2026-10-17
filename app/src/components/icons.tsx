@@ -34,3 +34,11 @@ export const Ring = ({ dash }: { dash: string }) => (
     <circle cx="9" cy="9" r="7" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeDasharray={dash} transform="rotate(-90 9 9)" />
   </svg>
 )
+export const Speaker = ({ size = 16, short = false }: P & { short?: boolean }) =>
+  svg(size, short ? 1.5 : 1.75, <>
+    <path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" />
+    <path d="M16 9a5 5 0 0 1 0 6" />
+    {!short && <path d="M19.4 18.4a9 9 0 0 0 0-12.8" />}
+  </>)
+export const FocusIcon = ({ size = 16 }: P) =>
+  svg(size, 1.75, <><path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" /></>)
