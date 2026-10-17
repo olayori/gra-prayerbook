@@ -140,11 +140,18 @@ A `books` table, one row per book:
 - **Members today:** `members` stays the source for `members` access. No data moves, and nobody loses access.
 - **Registration code:** stays as it is on the web.
   - TODO (later project): code redemption is not offered inside the iOS app (Apple 3.1.1). Members redeem on the web, and the app honours the membership.
-- **Starting access (my call, matches today):**
-  - Weekly and Rooted: `free`;
-  - Covenant and Jesus Chosen Fast and Prayer: `members`.
-- **Guest access code:** stays for the live site until the switchover. After that, private content is unreachable without an account, so the guest code only works for free books.
-  - TODO (owner): decide whether guest access survives at all.
+- **Starting access (owner decision, 2026-10-16):**
+  - Weekly, Rooted and Jesus Chosen Fast and Prayer: `free`;
+  - Covenant: `members`.
+  - Free books open without signing in. Signing in only adds sync.
+- **The guest access code is removed (owner decision, 2026-10-16):**
+  - **In the app:** the "Continue with access code" path and the device unlock are deleted.
+  - **On the live site:** the owner removes them in Claude Design, as part of the catalog update (§7). The data contract says so explicitly.
+  - **People on a device unlocked with the code:**
+    - they can still open free books;
+    - Covenant asks them to sign in or create an account (with the registration code);
+    - their on-device progress is kept and merged into the account on first sign-in, as sync already does, so nothing is lost.
+  - **The stored hash goes:** the app no longer stores or checks the shared code's hash. The registration code stays a server-side check (`redeem_code`).
 
 ### 5. Shelves and sections (what the Library home and store show)
 
@@ -191,6 +198,8 @@ The owner updates the live Library home, store and readers in Claude Design to r
 - **Readers:** how a reader page gets a book, its `config`, the latest edition and progress keys, and how it opens any catalog book (e.g. `?book=<slug>`) rather than one hard-coded per folder.
 - **Shelves:** how the home and store read sections, banners and books in order, honouring dates and visibility.
 - **Access:** how to show free, members and paid books, what `can_read` returns, and what to show when content is locked.
+  - Free books open without the sign-in gate.
+  - The guest "Continue with access code" path is removed everywhere.
 - **Compatibility:** progress and sync rules that keep existing users' data.
 
 The contract ships with Phase 1, so design work can start as soon as the tables exist.
@@ -246,7 +255,7 @@ The contract ships with Phase 1, so design work can start as soon as the tables 
 - `members` stays the source of members access; entitlements add `grant` / store sources.
 - Covers in a public bucket; content only behind RLS.
 - Old tables (`book_versions`, `lib_versions`, weekly) kept compatible as views or synced until the switchover; full privacy only at the switchover.
-- Starting access: Weekly and Rooted free; Covenant and Jesus Chosen Fast and Prayer members.
+- (Superseded by owner decision: Weekly, Rooted and Jesus Chosen Fast and Prayer free; Covenant members; guest code removed.)
 - Jesus Chosen Fast and Prayer: lists as `names`; the weekly placeholder as an `embed`; plans and history stay outside the catalog.
 - Sections and banners have no draft layer; "save hidden and preview" instead.
 - Rooted's reader waits for porting to resume; its progress stays device-only.
