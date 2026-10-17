@@ -400,9 +400,8 @@
 
 **Files:**
 - Delete: `site/admin/index.html` (the Claude Design export)
-- Create: `app/public/admin/index.html`: a tiny page that redirects to `../#/admin/content`, keeping any `#…` it was opened with, with a "Opening the Admin Console…" fallback link. Its path in the build is `dist/admin/index.html`, so the Pages workflow publishes it at `/overcomers/app/admin/`.
-- Modify: `.github/workflows/pages.yml`: after copying `app/dist` to `site/app`, also write `site/admin/index.html` as a redirect to `../app/#/admin/content`.
-- Modify: `scripts/lib/bundle.mjs` (remove `admin` from `PAGES`), `scripts/check-site.mjs` if needed, `tests/smoke.spec.js` (remove the admin case and add a test that `admin/` redirects in the deployed layout only if the local server supports it; otherwise rely on Task 2's admin tests), `.claude/skills/pull-design/SKILL.md` (`Admin Console.dc.html` is no longer imported), `CLAUDE.md` (Layout: the Admin Console is now `app/src/features/admin`).
+- Modify: `.github/workflows/pages.yml`: after copying `app/dist` to `site/app`, write `site/admin/index.html`, a tiny page that redirects to `../app/#/admin/content` (meta refresh plus `location.replace`) with an "Opening the Admin Console…" fallback link.
+- Modify: `scripts/lib/bundle.mjs` (remove `admin` from `PAGES`), `scripts/check-site.mjs` if needed, `tests/smoke.spec.js` (remove the admin case; the admin tests cover the console), `.claude/skills/pull-design/SKILL.md` (`Admin Console.dc.html` is no longer imported), `CLAUDE.md` (Layout: the Admin Console is now `app/src/features/admin`).
 - Modify: `docs/superpowers/specs/2026-10-16-book-catalog-design.md` (§6 status: replaced on 2026-10-17).
 
 - [ ] **Step 1: Check parity.** Walk through the parity blocks of Tasks 3, 5–10 against `design/src/admin/app.js`, and record any gap as a ledger ruling. Fix it, or note it as deferred, before switching.
