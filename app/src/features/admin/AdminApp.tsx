@@ -11,6 +11,7 @@ import { DraftStore } from './editor/draftStore.ts'
 import { EditorContext, type Sel } from './editor/EditorContext.ts'
 import PublishDialog from './editor/PublishDialog.tsx'
 import HistoryTab from './HistoryTab.tsx'
+import WeeklyTab from './weekly/WeeklyTab.tsx'
 
 // The Admin Console (web only), rebuilt from design/src/admin. Sign-in uses the same
 // account and session as the books.
@@ -267,7 +268,7 @@ function Ready({ book, isAdmin, toastMsg, signOutNow }: { book: AdminBook; isAdm
           ) : (
             <Routes>
               <Route path="content" element={<ContentTab />} />
-              <Route path="weekly" element={<Placeholder name="Weekly" />} />
+              <Route path="weekly" element={<WeeklyTab />} />
               {isAdmin && <Route path="users" element={<Placeholder name="Users" />} />}
               <Route path="translations" element={<Placeholder name="Translations" />} />
               <Route path="insights" element={<Placeholder name="Insights" />} />
