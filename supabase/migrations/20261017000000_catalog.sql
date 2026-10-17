@@ -115,3 +115,63 @@ grant select on public.books to anon, authenticated;
 grant insert, update, delete on public.books to authenticated;
 drop trigger if exists books_touch on public.books;
 create trigger books_touch before update on public.books for each row execute function public.touch_updated_at();
+
+-- =====================================================================
+-- 2. Access: entitlements and can_read
+-- =====================================================================
+
+-- Who may read what beyond free books. Grants come from the Admin Console (Phase 2) and
+-- from app-store / Stripe purchases (Phase 5, written with the service role). Clients
+-- can only read their own rows.
+create table if not exists public.entitlements (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users on delete cascade,
+  scope text not null check (scope = 'all' or scope ~ '^book:[a-z0-9]+(-[a-z0-9]+)*$'),
+  source text not null check (source in ('grant', 'members', 'apple', 'google', 'stripe')),
+  expires_at timestamptz,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists entitlements_user_idx on public.entitlements (user_id);
+alter table public.entitlements enable row level security;
+drop policy if exists "read own entitlements" on public.entitlements;
+create policy "read own entitlements" on public.entitlements for select to authenticated
+  using (user_id = auth.uid() or public.is_editor());
+grant select on public.entitlements to authenticated;
+
+-- The one access rule every content read goes through (spec §4).
+create or replace function public.can_read(p_slug text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.books b
+    where b.slug = p_slug
+      and (
+        public.is_editor()
+        or (b.status = 'published' and (
+          b.access = 'free'
+          or exists (
+            select 1 from public.entitlements e
+            where e.user_id = auth.uid()
+              and e.scope in ('all', 'book:' || p_slug)
+              and e.revoked_at is null
+              and (e.expires_at is null or e.expires_at > now()))
+          or (b.access = 'members' and exists (select 1 from public.members m where m.user_id = auth.uid()))
+        ))
+      )
+  )
+$$;
+revoke all on function public.can_read(text) from public;
+grant execute on function public.can_read(text) to anon, authenticated;
+
+-- Free books sync for any signed-in reader, not only members. Covenant (book_state) stays
+-- members-only.
+drop policy if exists "members read own library" on public.library_state;
+drop policy if exists "members insert own library" on public.library_state;
+drop policy if exists "members update own library" on public.library_state;
+drop policy if exists "read own library" on public.library_state;
+drop policy if exists "insert own library" on public.library_state;
+drop policy if exists "update own library" on public.library_state;
+create policy "read own library" on public.library_state for select to authenticated using (auth.uid() = user_id);
+create policy "insert own library" on public.library_state for insert to authenticated with check (auth.uid() = user_id);
+create policy "update own library" on public.library_state for update to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
