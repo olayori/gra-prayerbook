@@ -19,7 +19,7 @@ function useSystemDark() {
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [stored, store] = useStored<Partial<Settings>>('settings', {})
+  const [stored, store] = useStored<Partial<Settings>>('gra-covenant-settings', {})
   const settings = { ...DEFAULTS, ...stored }
   const systemDark = useSystemDark()
   const dark = settings.theme === 'dark' || (settings.theme === 'auto' && systemDark)

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { HashRouter, Link, Navigate, Route, Routes } from 'react-router'
+import { AuthProvider } from './lib/AuthProvider.tsx'
 import { SettingsProvider } from './lib/SettingsProvider.tsx'
 
 // Each screen loads on demand, so the start page doesn't pull in every screen and the Supabase client.
@@ -11,17 +12,19 @@ const WeeklyPrayers = lazy(() => import('./features/weekly/WeeklyPrayers.tsx'))
 export default function App() {
   return (
     <SettingsProvider>
-      <HashRouter>
-        <Suspense fallback={null}>
-          <Routes>
-            <Route path="/" element={<PreviewIndex />} />
-            <Route path="/weekly" element={<WeeklyPrayers />} />
-            <Route path="/weekly/:weekOf" element={<WeeklyPrayers />} />
-            <Route path="/book/:book" element={<Reader />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </HashRouter>
+      <AuthProvider>
+        <HashRouter>
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="/" element={<PreviewIndex />} />
+              <Route path="/weekly" element={<WeeklyPrayers />} />
+              <Route path="/weekly/:weekOf" element={<WeeklyPrayers />} />
+              <Route path="/book/:book" element={<Reader />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </HashRouter>
+      </AuthProvider>
     </SettingsProvider>
   )
 }

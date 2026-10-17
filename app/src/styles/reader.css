@@ -208,3 +208,35 @@
 .preview nav { display: flex; flex-direction: column; border-top: 1px solid var(--color-divider); }
 .preview nav a { min-height: 52px; display: flex; align-items: center; border-bottom: 1px solid var(--color-divider); font-size: 17px; }
 .preview .muted { font-size: 14px; margin-top: 20px; }
+
+/* Book gate (sign in / access code) */
+.lock { position: fixed; inset: 0; z-index: 100; background: var(--color-bg); display: flex; align-items: center; justify-content: center; padding: 24px; overflow: auto; font-family: var(--font-body); font-size: 15px; line-height: 1.5; letter-spacing: normal; }
+.lock-inner { margin: auto; width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; }
+.lock-logo { width: 100%; max-width: 280px; }
+.lock-logo img { display: block; width: 100%; max-width: 280px; height: auto; }
+.lock h1 { font-family: var(--font-heading); font-weight: 400; font-size: 44px; line-height: 1.05; margin: 0; text-wrap: balance; }
+.lock-rule { width: 40px; height: 1px; background: var(--color-accent); }
+.lock-auth { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 16px; margin-top: 0; }
+.lock-tabs { grid-template-columns: 1fr 1fr; }
+.lock-heading { display: flex; flex-direction: column; gap: 6px; }
+.lock-heading h2 { font-family: var(--font-heading); font-weight: 600; font-size: 24px; line-height: 1.2; margin: 0; }
+.lock-heading p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--color-neutral-700); text-wrap: pretty; }
+.lock-form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.lock-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--color-neutral-700); }
+.lock-form .input { font-size: 17px; min-height: 48px; }
+.lock-form .btn { font-size: 17px; min-height: 48px; }
+.lock-error { font-size: 14px; line-height: 1.45; color: var(--color-accent-700); }
+.lock-msg { font-size: 14px; line-height: 1.45; padding: 10px 12px; border: 1px solid var(--color-accent-300); border-radius: var(--radius-md); }
+.lock-link { all: unset; cursor: pointer; align-self: center; padding: 8px; font-size: 14px; color: var(--color-accent-700); }
+.lock-guest { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 14px; border-top: 1px solid var(--color-divider); }
+.lock-guest .btn { min-height: 44px; font-size: 15px; }
+.lock-guest span { font-size: 13px; line-height: 1.45; color: var(--color-neutral-700); }
+
+.account { display: flex; flex-direction: column; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--color-divider); }
+.account-row { display: flex; align-items: center; gap: 12px; }
+.account-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.account-email { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.account-sync { font-size: 13px; color: var(--color-neutral-700); }
+.account .btn { min-height: 40px; font-size: 14px; white-space: nowrap; }
+.account .btn-ghost { align-self: flex-start; margin-left: -8px; }
+.account p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--color-neutral-800); text-wrap: pretty; }

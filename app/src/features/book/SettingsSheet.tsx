@@ -1,12 +1,15 @@
 import Sheet from '../../components/Sheet.tsx'
+import { auth, isGuest, useAuth } from '../../lib/auth.ts'
 import { FONTS, useSettings, type Settings } from '../../lib/settings.ts'
+import type { BookStore, SyncState } from './store.ts'
 
-// The design's "Aa" sheet. Not yet ported: language, account, read-aloud voice.
-export default function SettingsSheet({ onClose }: { onClose: () => void }) {
+// The design's "Aa" sheet. Not yet ported: language, read-aloud voice.
+export default function SettingsSheet({ store, onClose }: { store: BookStore; onClose: () => void }) {
   const { settings: st, set } = useSettings()
   return (
     <Sheet title="Settings" onClose={onClose}>
       <div className="settings">
+        <Account store={store} onClose={onClose} />
         <Group label="Text size" cols={6}>
           {([[15, 14, 'Small'], [17, 17, 'Medium'], [19, 20, 'Large'], [22, 23, 'Extra large'], [25, 26, 'Larger'], [29, 30, 'Largest']] as const).map(
             ([v, fs, aria]) => (
@@ -84,5 +87,62 @@ function Opt(props: { on: boolean; onPick: () => void; aria?: string; style?: Re
     <button className={props.on ? 'seg-opt-btn on' : 'seg-opt-btn'} onClick={props.onPick} aria-pressed={props.on} aria-label={props.aria} style={props.style}>
       {props.children}
     </button>
+  )
+}
+
+function syncLabel(sync: SyncState, at: number | null) {
+  if (sync === 'syncing') return 'Syncing…'
+  if (sync === 'offline') return 'Offline. Changes will sync when you’re back online.'
+  if (sync === 'error') return 'Couldn’t sync. Tap Sync now to retry.'
+  if (sync === 'ok') {
+    const ago = at ? Math.round((Date.now() - at) / 60000) : 0
+    return `Synced ${ago < 1 ? 'just now' : ago === 1 ? '1 minute ago' : ago < 60 ? `${ago} minutes ago` : 'over an hour ago'}`
+  }
+  return 'Progress syncs across your devices'
+}
+
+function Account({ store, onClose }: { store: BookStore; onClose: () => void }) {
+  const { user } = useAuth()
+  if (user) {
+    const signOut = async () => {
+      if (!window.confirm('Sign out on this device? Your progress is saved to your account.')) return
+      if (store.hasUnsynced() && !(await store.push()) && !window.confirm('Some recent changes haven’t synced yet and will be lost on this device. Sign out anyway?')) return
+      onClose()
+      await auth.signOutQuiet()
+    }
+    return (
+      <div className="account">
+        <span className="setting-label">Account</span>
+        <div className="account-row">
+          <div className="account-who">
+            <span className="account-email">{user.email}</span>
+            <span className="account-sync">{syncLabel(store.sync, store.syncAt)}</span>
+          </div>
+          <button className="btn btn-secondary" onClick={() => void store.pull()}>
+            Sync now
+          </button>
+        </div>
+        <button className="btn btn-ghost" onClick={() => void signOut()}>
+          Sign out
+        </button>
+      </div>
+    )
+  }
+  if (!isGuest()) return null
+  return (
+    <div className="account">
+      <span className="setting-label">Account</span>
+      <p>You’re using an access code. Your progress is saved on this device only. Create an account to keep it in sync on your phone and iPad.</p>
+      <button
+        className="btn btn-secondary"
+        style={{ alignSelf: 'flex-start' }}
+        onClick={() => {
+          onClose()
+          auth.toAccount()
+        }}
+      >
+        Sign in or create account
+      </button>
+    </div>
   )
 }

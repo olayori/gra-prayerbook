@@ -1,22 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import Sheet from '../../components/Sheet.tsx'
 import { useToast } from '../../components/Toast.tsx'
 import { ArrowRight, ArrowUp, Bookmark, CheckAll, ChevronLeft, DoneCircle, Gear, Moon, Ring, Sun } from '../../components/icons.tsx'
+import { useAuth } from '../../lib/auth.ts'
 import { FONTS, useSettings } from '../../lib/settings.ts'
+import { supabase } from '../../lib/supabase.ts'
 import { fetchWeeks } from '../weekly/api.ts'
 import { weekLabel, type Week } from '../weekly/week.ts'
 import { BOOKS, isBookKey, loadBook, type BookConfig } from './books.ts'
+import LockScreen from './LockScreen.tsx'
 import Logo from './Logo.tsx'
-import { useMarks, type Marks } from './marks.ts'
 import { buildBook, ringDash, type BookView, type PartView } from './model.ts'
 import SectionBlock from './SectionBlock.tsx'
 import SettingsSheet from './SettingsSheet.tsx'
-import type { Part, Scripture } from './types.ts'
+import { BookStore } from './store.ts'
+import type { Scripture } from './types.ts'
 
 // Port of the book reader (design/src/book) for Covenant Prayers and JCFP.
 // Not yet ported: Focused Mode, Listen, share, search, plans, saved/history sheets,
-// pen, paged mode, sync and sign-in. See CLAUDE.md for the porting order.
+// pen and paged mode. See CLAUDE.md for the porting order.
 export default function Reader() {
   const { book } = useParams()
   if (book === 'weekly') return <Navigate to="/weekly" replace />
@@ -25,26 +28,60 @@ export default function Reader() {
 }
 
 function BookReader({ book }: { book: BookConfig }) {
-  const [data, setData] = useState<Part[] | null>(null)
+  const { locked, user } = useAuth()
+  const [store] = useState(() => new BookStore(book, supabase))
   const [failed, setFailed] = useState(false)
+  useSyncExternalStore(store.subscribe, () => store.version)
 
   useEffect(() => {
     document.title = `${book.title} · Overcomer’s Library`
-    loadBook(book.key).then(setData, () => setFailed(true))
-  }, [book])
+    loadBook(book.key).then((d) => store.init(d), () => setFailed(true))
+  }, [book, store])
 
+  // Account sync: pull on open, when the app returns to the foreground or comes back
+  // online, and every 2 minutes (as the design does).
+  const syncUser = locked ? null : user
+  useEffect(() => {
+    store.setUser(syncUser)
+    if (!syncUser) return
+    const onVis = () => !document.hidden && void store.pull()
+    const poll = setInterval(() => !document.hidden && void store.pull(), 120_000)
+    document.addEventListener('visibilitychange', onVis)
+    addEventListener('online', onVis)
+    return () => {
+      clearInterval(poll)
+      document.removeEventListener('visibilitychange', onVis)
+      removeEventListener('online', onVis)
+    }
+  }, [store, syncUser])
+
+  // Usage counts go out after 8s, every 5 minutes, and when the app is hidden.
+  useEffect(() => {
+    const flush = () => void store.flushUse()
+    const onHide = () => document.hidden && flush()
+    const first = setTimeout(flush, 8000)
+    const every = setInterval(flush, 300_000)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      clearTimeout(first)
+      clearInterval(every)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [store])
+
+  if (locked) return <LockScreen title={book.title} />
   if (failed) return <p className="status">Couldn’t open this book. Please try again.</p>
-  if (!data) return <p className="status">Opening…</p>
-  return <BookPages book={book} data={data} />
+  if (!store.data.length) return <p className="status">Opening…</p>
+  return <BookPages book={book} store={store} />
 }
 
-function BookPages({ book, data }: { book: BookConfig; data: Part[] }) {
+function BookPages({ book, store }: { book: BookConfig; store: BookStore }) {
   const { settings, set, dark } = useSettings()
-  const marks = useMarks(book.key)
   const [toast, showToast] = useToast()
   const [sheet, setSheet] = useState<'aa' | Scripture | null>(null)
-  const { prayed, fav, bm } = marks
-  const view = useMemo(() => buildBook(book, data, { prayed, fav, bm }, settings.verses), [book, data, prayed, fav, bm, settings.verses])
+  useEffect(() => store.setToastHandler(showToast), [store, showToast])
+  // Re-rendered by the store subscription in BookReader; building the view is cheap.
+  const view = buildBook(book, store.data, { prayed: store.prayed, fav: store.fav, bm: store.bm }, settings.verses)
 
   const goto = (id: string) => {
     const el = document.getElementById(id)
@@ -112,9 +149,9 @@ function BookPages({ book, data }: { book: BookConfig; data: Part[] }) {
 
       {view.parts.map((p) => (
         <div key={p.id}>
-          <PartIntro p={p} marks={marks} toast={showToast} />
+          <PartIntro p={p} store={store} toast={showToast} />
           {p.sections.map((s) => (
-            <SectionBlock key={s.id} s={s} marks={marks} toast={showToast} onVerse={setSheet} />
+            <SectionBlock key={s.id} s={s} store={store} toast={showToast} onVerse={setSheet} />
           ))}
           {p.weeklyAfter && <WeeklyInline />}
         </div>
@@ -130,7 +167,7 @@ function BookPages({ book, data }: { book: BookConfig; data: Part[] }) {
         </button>
       </footer>
 
-      {sheet === 'aa' && <SettingsSheet onClose={() => setSheet(null)} />}
+      {sheet === 'aa' && <SettingsSheet store={store} onClose={() => setSheet(null)} />}
       {sheet && sheet !== 'aa' && (
         <Sheet title="Scripture" onClose={() => setSheet(null)}>
           <div className="verse-sheet">
@@ -204,7 +241,7 @@ function Progress({ done, total }: { done: number; total: number }) {
   )
 }
 
-function PartIntro({ p, marks, toast }: { p: PartView; marks: Marks; toast: (t: string) => void }) {
+function PartIntro({ p, store, toast }: { p: PartView; store: BookStore; toast: (t: string) => void }) {
   const all = p.total > 0 && p.done === p.total
   return (
     <section id={p.id} className="part-intro">
@@ -219,11 +256,11 @@ function PartIntro({ p, marks, toast }: { p: PartView; marks: Marks; toast: (t: 
       <div className="part-count">{p.count}</div>
       {p.hasActions && (
         <div className="actions center">
-          <button className="btn btn-ghost" onClick={() => marks.setMany(p.ids, !all)}>
+          <button className="btn btn-ghost" onClick={() => store.setMany(p.ids, !all)}>
             <CheckAll />
             <span>{all ? 'Clear watch' : 'Mark all prayed'}</span>
           </button>
-          <button className="btn btn-ghost" onClick={() => toast(marks.toggleBm(p.id) ? 'Bookmarked' : 'Bookmark removed')}>
+          <button className="btn btn-ghost" onClick={() => toast(store.toggleBm(p.id) ? 'Bookmarked' : 'Bookmark removed')}>
             <Bookmark on={p.bookmarked} />
             <span>{p.bookmarked ? 'Bookmarked' : 'Bookmark'}</span>
           </button>
@@ -236,7 +273,7 @@ function PartIntro({ p, marks, toast }: { p: PartView; marks: Marks; toast: (t: 
           </span>
           <button
             className="btn btn-secondary"
-            onClick={() => window.confirm(`Clear all checked prayers in ${p.label}?`) && marks.clearPrefix(`s-${p.n}-`)}
+            onClick={() => window.confirm(`Clear all checked prayers in ${p.label}?`) && store.clearPrefix(`s-${p.n}-`)}
           >
             Reset part
           </button>

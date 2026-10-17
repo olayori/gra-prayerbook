@@ -1,15 +1,15 @@
 import { Bookmark, CheckAll } from '../../components/icons.tsx'
 import Logo from './Logo.tsx'
-import type { Marks } from './marks.ts'
 import type { SectionView } from './model.ts'
 import Prayer from './Prayer.tsx'
+import type { BookStore } from './store.ts'
 import type { Scripture } from './types.ts'
 
-type Props = { s: SectionView; marks: Marks; toast: (t: string) => void; onVerse: (sc: Scripture) => void }
+type Props = { s: SectionView; store: BookStore; toast: (t: string) => void; onVerse: (sc: Scripture) => void }
 
 // A section (<article data-sec> in the design): header, scripture foundation,
 // prayers or a prayer list, and the closing ornament.
-export default function SectionBlock({ s, marks, toast, onVerse }: Props) {
+export default function SectionBlock({ s, store, toast, onVerse }: Props) {
   const allDone = s.total > 0 && s.done === s.total
   return (
     <article id={s.id} className={s.compact ? 'section compact' : 'section'}>
@@ -23,11 +23,11 @@ export default function SectionBlock({ s, marks, toast, onVerse }: Props) {
           {(s.showTitle || s.isList) && <h3 className="section-title">{s.title}</h3>}
           {!s.isList && (
             <div className="actions">
-              <button className="btn btn-ghost" onClick={() => marks.setMany(s.ids, !allDone)}>
+              <button className="btn btn-ghost" onClick={() => store.setMany(s.ids, !allDone)}>
                 <CheckAll />
                 <span>{allDone ? 'Clear section' : 'Mark all prayed'}</span>
               </button>
-              <button className="btn btn-ghost" onClick={() => toast(marks.toggleBm(s.id) ? 'Bookmarked' : 'Bookmark removed')}>
+              <button className="btn btn-ghost" onClick={() => toast(store.toggleBm(s.id) ? 'Bookmarked' : 'Bookmark removed')}>
                 <Bookmark on={s.bookmarked} />
                 <span>{s.bookmarked ? 'Bookmarked' : 'Bookmark'}</span>
               </button>
@@ -79,8 +79,8 @@ export default function SectionBlock({ s, marks, toast, onVerse }: Props) {
               <Prayer
                 key={p.id}
                 p={p}
-                onToggle={() => marks.toggle(p.id)}
-                onFav={() => toast(marks.toggleFav(p.id) ? 'Added to favorites' : 'Removed from favorites')}
+                onToggle={() => store.toggle(p.id)}
+                onFav={() => toast(store.toggleFav(p.id) ? 'Added to favorites' : 'Removed from favorites')}
                 onVerse={onVerse}
               />
             ))}
