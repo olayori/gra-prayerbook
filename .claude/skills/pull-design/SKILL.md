@@ -40,6 +40,7 @@ If an export can't be identified, re-run that one file with `--as home|book|read
 - **Backend impact:** list the tables and RPCs the new code calls and make sure each one exists in `supabase/migrations/`:
   `grep -ohE "\.from\('[a-z_]+'\)|\.rpc\('[a-z_]+'" design/src/*/app.js | sort -u`
   If the design needs a table, column or function that doesn't exist, write a migration (`npm run db:new <name>`, idempotent SQL with RLS on every table) and tell the user it must be deployed before the web app.
+- If a design calls `get_library` / `get_book` / `get_edition` / `get_entries`, check the calls and the fields it reads against `docs/catalog-data-contract.md`, and flag anything that doesn't match. Flag any design that still embeds book content or the access-code hash.
 - Check whether embedded data (`prayersData`, `jcfpData` in `design/src/*/assets.json`) changed relative to `site/*.json`, and mention it if so.
 
 ## 4. Verify and commit
