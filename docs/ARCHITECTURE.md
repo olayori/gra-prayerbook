@@ -45,6 +45,8 @@ _Assessment written 2026-10-16. Goal: ship to the App Store and Google Play, wit
 | In-app purchases | RevenueCat Capacitor SDK | RevenueCat Capacitor SDK | RevenueCat RN SDK | RevenueCat Flutter / StoreKit |
 | Code you can test and review | No | Yes | Yes | Yes |
 
+**Decision (2026-10-16): B.** Scaffolded in `app/`. The Claude Design handoff package (`design_handoff_gra_prayer_library_expo`) assumes Expo (option C) and specifies Expo modules. Its screen specs, tokens and tablet layouts still apply; map its Expo modules to Capacitor plugins (expo-notifications → @capacitor/local-notifications, expo-speech → a TTS plugin, expo-keep-awake → keep-awake, expo-haptics → @capacitor/haptics).
+
 **Recommendation: B, in stages.** The pages are already React class components, so porting them to typed modules is mostly mechanical. That gives one TypeScript codebase for the web, iOS and Android, keeps the web app (useful for church members on laptops and for "buy on the web" flows), and is the lowest-risk path through App Review. Capacitor 8 is current. Use plugins for local notifications (reminders), StatusBar/SplashScreen, Share, Filesystem (offline book downloads) and RevenueCat.
 
 Choose **C (Expo)** instead only if a truly native feel matters more than the web version and the design-tool workflow. For a reading and prayer app, B's WebView is not a meaningful handicap.
@@ -101,6 +103,6 @@ Book content then moves out of public JSON into Supabase tables or Storage, read
 
 1. **Done (this bootstrap):** the repo is an npm project; schema in tracked migrations; design import, extraction and checks; smoke tests; CI that tests before deploying; one-command deploys.
 2. **Protect content and add entitlements:** `products` and `entitlements` migrations, content behind RLS or Storage, remove the client-side guest unlock, enable leaked-password protection, then build or remove the `translate` function.
-3. **App codebase (option B):** scaffold `app/`, port the book reader first (the biggest and most-used page), then home, reader, Bible and admin. Retire each `site/` bundle as its page is replaced.
+3. **App codebase (option B):** ~~scaffold `app/`~~ (done, with Weekly Kingdom Prayers ported), port the book reader first (the biggest and most-used page), then home, reader, Bible and admin. Retire each `site/` bundle as its page is replaced.
 4. **Native:** Capacitor iOS/Android, local notifications, offline downloads, RevenueCat Test Store.
 5. **Stores:** developer accounts, sandbox and TestFlight / internal testing, listings and privacy labels, submission.

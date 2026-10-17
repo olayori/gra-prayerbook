@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Overcomers</string>
+    <string name="title_activity_main">Overcomers</string>
+    <string name="package_name">org.gra.overcomers</string>
+    <string name="custom_url_scheme">org.gra.overcomers</string>
+</resources>

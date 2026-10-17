@@ -2,7 +2,8 @@
 
 Prayer books, the Weekly Kingdom Prayers, and the Bible, from God’s Remnant Assembly. Live at https://olayori.github.io/overcomers/.
 
-- **Web app:** `site/`, designed in Claude Design and imported with `npm run design:pull`
+- **Web app (live):** `site/`, designed in Claude Design and imported with `npm run design:pull`
+- **New app:** `app/` (Vite + React + TypeScript, Capacitor for iOS/Android), being ported screen by screen. Preview: https://olayori.github.io/overcomers/app/
 - **Backend:** Supabase (auth, Postgres with RLS); schema in `supabase/migrations/`
 - **Plan for the iOS/Android apps and the marketplace:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
@@ -11,7 +12,8 @@ Prayer books, the Weekly Kingdom Prayers, and the Bible, from God’s Remnant As
 ```bash
 npm install
 npx playwright install chromium
-npm run serve      # http://localhost:4173/overcomers/
+npm run serve      # http://localhost:4173/overcomers/ (and the built app at /overcomers/app/)
+npm run app:dev    # app dev server
 npm run verify     # checks + smoke tests
 ```
 
