@@ -1,6 +1,6 @@
 -- Book config validation (catalog Phase 1, Task 1).
 begin;
-select plan(15);
+select plan(21);
 
 -- The four starting configs are valid.
 select ok(public.catalog_config_valid('{"reader":"prayer","levels":[{"name":"Part","show_titles":true},{"name":"Section","show_titles":true}],"content":["prayer","foundation"],"check_on":"item","numbering":"nested","actions_on":"level-2","schedule":"fixed","features":{"focus":true,"listen":true,"plans":true,"scripture":true,"verse_popups":true,"notes":true,"pen":true,"search":true,"share":true,"journal":true}}'), 'covenant config is valid');
@@ -19,6 +19,14 @@ select ok(not public.catalog_config_valid('{"reader":"prayer","levels":[{"name":
 select ok(not public.catalog_config_valid('{"reader":"prayer","levels":[{"name":"Lists","show_titles":true}],"content":["names"],"check_on":"none","numbering":"none","actions_on":"level-1","schedule":"fixed","features":{"listen":true}}'), 'listen with only name lists');
 select ok(not public.catalog_config_valid('"not an object"'), 'malformed config returns false, not an error');
 select ok(not public.catalog_config_valid('{}'), 'empty config');
+
+-- Missing keys are invalid too (final review, finding 1).
+select ok(not public.catalog_config_valid('{"reader":"prayer","numbering":"none","schedule":"fixed","check_on":"none","actions_on":"level-1"}'), 'no levels, content or features');
+select ok(not public.catalog_config_valid('{"reader":"prayer","levels":[{"show_titles":true}],"content":["prayer"],"check_on":"item","numbering":"nested","actions_on":"level-1","schedule":"fixed","features":{}}'), 'level without a name');
+select ok(not public.catalog_config_valid('{"reader":"prayer","levels":[{"name":"Part"}],"content":["prayer"],"check_on":"item","numbering":"nested","actions_on":"level-1","schedule":"fixed","features":{}}'), 'level without show_titles');
+select ok(not public.catalog_config_valid('{"reader":"prayer","levels":[{"name":"Part","show_titles":true}],"check_on":"item","numbering":"nested","actions_on":"level-1","schedule":"fixed","features":{}}'), 'no content key');
+select ok(not public.catalog_config_valid('{"reader":"prayer","levels":[{"name":"Part","show_titles":true}],"content":["prayer"],"numbering":"nested","actions_on":"level-1","schedule":"fixed","features":{}}'), 'no check_on');
+select ok(not public.catalog_config_valid('{"reader":"prayer","levels":[{"name":"Part","show_titles":true}],"content":["prayer"],"check_on":"item","numbering":"nested","actions_on":"level-1","schedule":"fixed"}'), 'no features');
 
 -- Slugs are lower-case words joined by dashes.
 select throws_ok($$insert into public.books (slug, template, config, title, access) values ('Bad Slug', 'x', '{}', 't', 'free')$$);
