@@ -8,6 +8,7 @@ const ADMIN = !!process.env.ADMIN_E2E;
 export default defineConfig({
   testDir: 'tests',
   timeout: 60_000,
+  globalTimeout: 15 * 60_000, // a stuck run fails instead of hanging CI
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: `http://localhost:${PORT}/overcomers/`,

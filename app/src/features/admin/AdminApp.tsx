@@ -1,11 +1,15 @@
 import { Capacitor } from '@capacitor/core'
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Navigate, NavLink, Route, Routes } from 'react-router'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react'
+import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router'
 import { auth, useAuth } from '../../lib/auth.ts'
 import { supabase } from '../../lib/supabase.ts'
 import Logo from '../book/Logo.tsx'
 import './admin.css'
-import { AdminContext, type AdminBook, type Role } from './context.ts'
+import { AdminContext, useAdmin, type AdminBook, type Role } from './context.ts'
+import ContentTab from './editor/ContentTab.tsx'
+import { DraftStore } from './editor/draftStore.ts'
+import { EditorContext, type Sel } from './editor/EditorContext.ts'
+import PublishDialog from './editor/PublishDialog.tsx'
 
 // The Admin Console (web only), rebuilt from design/src/admin. Sign-in uses the same
 // account and session as the books.
@@ -105,11 +109,101 @@ function Console() {
       // private mode
     }
   }
-  const isAdmin = role === 'admin'
-  const tabs = TABS.filter((t) => !t.adminOnly || isAdmin)
-
   return (
     <AdminContext.Provider value={{ me: user!.email ?? '', userId: user!.id, role: role!, books, book, pickBook, toast }}>
+      <Ready key={book.slug} book={book} isAdmin={role === 'admin'} toastMsg={toastMsg} signOutNow={signOut} />
+    </AdminContext.Provider>
+  )
+}
+
+// The console for one book: its draft store, header tools and tabs.
+function Ready({ book, isAdmin, toastMsg, signOutNow }: { book: AdminBook; isAdmin: boolean; toastMsg: string | null; signOutNow: () => void }) {
+  const { me, books, pickBook } = useAdmin()
+  const navigate = useNavigate()
+  const keepExtras = book.config.content.includes('names') || book.config.content.includes('embed')
+  const store = useMemo(() => new DraftStore(supabase, book.slug, me, keepExtras), [book.slug, me, keepExtras])
+  useSyncExternalStore(store.subscribe, () => store.version)
+  const [sel, setSel] = useState<Sel>(null)
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+  const [loadErr, setLoadErr] = useState('')
+  const [publishing, setPublishing] = useState(false)
+  const focus = useRef<string | null>(null)
+
+  useEffect(() => {
+    store.load().then(
+      () => {
+        const p0 = store.draft?.[0], s0 = p0?.sections[0]
+        setSel(s0 ? { kind: 'section', u: s0.u } : null)
+        setOpen(p0 ? { [p0.u]: true } : {})
+      },
+      (e) => setLoadErr(`Couldn’t load the book. ${(e as Error)?.message ?? ''}`),
+    )
+    return () => {
+      void store.flush()
+      store.stop()
+    }
+  }, [store])
+
+  // Ctrl/⌘-Z and Shift-Ctrl/⌘-Z undo and redo when not typing in a field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = (e.target as HTMLElement | null)?.tagName
+      const typing = t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT'
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !typing && store.draft) {
+        e.preventDefault()
+        if (e.shiftKey) store.redo()
+        else store.undo()
+      }
+    }
+    // Ask before leaving with changes that aren't saved yet.
+    const onLeave = (e: BeforeUnloadEvent) => {
+      if (store.save !== 'saved') {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    addEventListener('keydown', onKey)
+    addEventListener('beforeunload', onLeave)
+    return () => {
+      removeEventListener('keydown', onKey)
+      removeEventListener('beforeunload', onLeave)
+    }
+  }, [store])
+
+  const signOut = () => {
+    if (store.save !== 'saved' && !window.confirm('Some changes aren’t saved yet. Sign out anyway?')) return
+    signOutNow()
+  }
+  const switchBook = async (s: string) => {
+    await store.flush()
+    pickBook(s)
+  }
+
+  const editor = useMemo(
+    () => ({
+      store,
+      sel,
+      setSel,
+      open,
+      setOpen,
+      focusPrayer: (u: string) => void (focus.current = u),
+      takeFocus: () => {
+        const u = focus.current
+        focus.current = null
+        return u
+      },
+    }),
+    [store, sel, open],
+  )
+
+  const tabs = TABS.filter((t) => !t.adminOnly || isAdmin)
+  const df = store.changes
+  const saveLabel =
+    store.save === 'saving' ? 'Saving…' : store.save === 'unsaved' ? 'Unsaved changes' : store.save === 'error' ? 'Couldn’t save · retrying' : store.savedOnce ? 'Draft saved' : 'Draft up to date'
+  const canUndo = store.history.canUndo, canRedo = store.history.canRedo
+
+  return (
+    <EditorContext.Provider value={editor}>
       <div className="adm">
         <header className="adm-hdr">
           <div className="adm-bar">
@@ -120,7 +214,7 @@ function Console() {
                 <span className="adm-role">{isAdmin ? 'Admin' : 'Editor'}</span>
               </div>
             </div>
-            <select className="input adm-book" aria-label="Book" value={book.slug} onChange={(e) => pickBook(e.target.value)}>
+            <select className="input adm-book" aria-label="Book" value={book.slug} onChange={(e) => void switchBook(e.target.value)}>
               {books.map((b) => (
                 <option key={b.slug} value={b.slug}>
                   {b.title}
@@ -136,33 +230,59 @@ function Console() {
             </nav>
             <span className="spacer" />
             <div className="adm-tools">
+              <span className={store.save === 'error' ? 'adm-save accent' : 'adm-save'}>{saveLabel}</span>
+              <button className="adm-icon" onClick={() => store.undo()} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl+Z)" style={{ opacity: canUndo ? 1 : 0.35 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+              </button>
+              <button className="adm-icon" onClick={() => store.redo()} disabled={!canRedo} aria-label="Redo" title="Redo (Ctrl+Shift+Z)" style={{ opacity: canRedo ? 1 : 0.35 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
+              </button>
+              <button className="btn btn-primary adm-publish" onClick={() => setPublishing(true)} disabled={!store.draft}>
+                Publish{df.total > 0 && <span className="adm-badge">{df.total}</span>}
+              </button>
+              <span className="adm-sep" />
               <a href="#/" target="_blank" rel="noopener">
                 Open book
               </a>
-              <button className="btn btn-ghost" onClick={signOut} title={user!.email ?? ''}>
+              <button className="btn btn-ghost" onClick={signOut} title={me}>
                 Sign out
               </button>
             </div>
           </div>
+          {store.conflict && (
+            <div role="alert" className="adm-conflict">
+              <span>Someone else changed the draft while you were editing. Your recent changes aren’t saved. Reload to see theirs.</span>
+              <button className="btn btn-secondary" onClick={() => void store.reload()}>
+                Reload draft
+              </button>
+            </div>
+          )}
         </header>
         <main className="adm-main">
-          <Routes>
-            <Route path="content" element={<Placeholder name="Content" />} />
-            <Route path="weekly" element={<Placeholder name="Weekly" />} />
-            {isAdmin && <Route path="users" element={<Placeholder name="Users" />} />}
-            <Route path="translations" element={<Placeholder name="Translations" />} />
-            <Route path="insights" element={<Placeholder name="Insights" />} />
-            <Route path="history" element={<Placeholder name="History" />} />
-            <Route path="*" element={<Navigate to="/admin/content" replace />} />
-          </Routes>
+          {loadErr ? (
+            <p className="adm-pad">{loadErr}</p>
+          ) : !store.draft ? (
+            <div className="adm-loading short">Opening the book…</div>
+          ) : (
+            <Routes>
+              <Route path="content" element={<ContentTab />} />
+              <Route path="weekly" element={<Placeholder name="Weekly" />} />
+              {isAdmin && <Route path="users" element={<Placeholder name="Users" />} />}
+              <Route path="translations" element={<Placeholder name="Translations" />} />
+              <Route path="insights" element={<Placeholder name="Insights" />} />
+              <Route path="history" element={<Placeholder name="History" />} />
+              <Route path="*" element={<Navigate to="/admin/content" replace />} />
+            </Routes>
+          )}
         </main>
+        {publishing && <PublishDialog onClose={() => setPublishing(false)} onGoContent={() => navigate('/admin/content')} />}
         {toastMsg && (
           <div className="toast" role="status">
             {toastMsg}
           </div>
         )}
       </div>
-    </AdminContext.Provider>
+    </EditorContext.Provider>
   )
 }
 

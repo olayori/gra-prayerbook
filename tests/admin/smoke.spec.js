@@ -22,11 +22,11 @@ test('an admin also sees Users', async ({ page }) => {
 
 test('the book picker lists the prayer books and remembers the choice', async ({ page }) => {
   await signIn(page, 'editor');
-  const picker = page.getByLabel('Book');
+  const picker = page.getByLabel('Book', { exact: true });
   await expect(picker.locator('option')).toHaveText(['Book of Covenant Prayers', 'Jesus Chosen Fast and Prayer Prayer Manual']);
   await picker.selectOption('jcfp');
   await page.reload();
-  await expect(page.getByLabel('Book')).toHaveValue('jcfp');
+  await expect(page.getByLabel('Book', { exact: true })).toHaveValue('jcfp');
 });
 
 test('editors are sent from Users back to Content', async ({ page }) => {
