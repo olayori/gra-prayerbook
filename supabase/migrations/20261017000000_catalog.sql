@@ -314,3 +314,103 @@ begin
 end $$;
 revoke all on function public.get_entries(text) from public;
 grant execute on function public.get_entries(text) to anon, authenticated;
+
+-- =====================================================================
+-- 4. Shelves and sections (Library home and store), covers
+-- =====================================================================
+
+create table if not exists public.sections (
+  id uuid primary key default gen_random_uuid(),
+  placement text not null check (placement in ('home', 'store')),
+  kind text not null check (kind in ('featured', 'this_week', 'continue', 'plan', 'shelf', 'banner')),
+  title text not null default '',
+  position int not null default 0,
+  visible boolean not null default true,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  -- banner: { image_url, title, body, link: { book | entry_date | url } }
+  banner jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists sections_placement_idx on public.sections (placement, position);
+
+-- Shown to readers when switched on and inside its date window.
+create or replace function public.section_live(s public.sections) returns boolean
+language sql stable set search_path = '' as $$
+  select s.visible and (s.starts_at is null or s.starts_at <= now()) and (s.ends_at is null or s.ends_at > now())
+$$;
+
+alter table public.sections enable row level security;
+drop policy if exists "read live sections" on public.sections;
+drop policy if exists "editors write sections" on public.sections;
+create policy "read live sections" on public.sections for select using (public.section_live(sections) or public.is_editor());
+create policy "editors write sections" on public.sections for all to authenticated
+  using (public.is_editor()) with check (public.is_editor());
+grant select on public.sections to anon, authenticated;
+grant insert, update, delete on public.sections to authenticated;
+drop trigger if exists sections_touch on public.sections;
+create trigger sections_touch before update on public.sections for each row execute function public.touch_updated_at();
+
+create table if not exists public.section_books (
+  section_id uuid not null references public.sections on delete cascade,
+  book_slug text not null references public.books (slug) on update cascade on delete cascade,
+  position int not null default 0,
+  primary key (section_id, book_slug)
+);
+alter table public.section_books enable row level security;
+drop policy if exists "read books of readable sections" on public.section_books;
+drop policy if exists "editors write section books" on public.section_books;
+create policy "read books of readable sections" on public.section_books for select
+  using (exists (select 1 from public.sections s where s.id = section_id));
+create policy "editors write section books" on public.section_books for all to authenticated
+  using (public.is_editor()) with check (public.is_editor());
+grant select on public.section_books to anon, authenticated;
+grant insert, update, delete on public.section_books to authenticated;
+
+-- Cover images: public to read, editors upload.
+insert into storage.buckets (id, name, public) values ('covers', 'covers', true) on conflict (id) do nothing;
+drop policy if exists "read covers" on storage.objects;
+drop policy if exists "editors add covers" on storage.objects;
+drop policy if exists "editors change covers" on storage.objects;
+drop policy if exists "editors remove covers" on storage.objects;
+create policy "read covers" on storage.objects for select using (bucket_id = 'covers');
+create policy "editors add covers" on storage.objects for insert to authenticated with check (bucket_id = 'covers' and public.is_editor());
+create policy "editors change covers" on storage.objects for update to authenticated using (bucket_id = 'covers' and public.is_editor());
+create policy "editors remove covers" on storage.objects for delete to authenticated using (bucket_id = 'covers' and public.is_editor());
+
+-- One book's details for a page: { slug, template, config, title, …, access, status, can_read }.
+create or replace function public.get_book(p_slug text) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('slug', b.slug, 'template', b.template, 'config', b.config, 'title', b.title,
+    'subtitle', b.subtitle, 'author', b.author, 'description', b.description, 'cover', b.cover,
+    'language', b.language, 'access', b.access, 'status', b.status, 'can_read', public.can_read(b.slug))
+  from public.books b
+  where b.slug = p_slug and (b.status = 'published' or public.is_editor())
+$$;
+revoke all on function public.get_book(text) from public;
+grant execute on function public.get_book(text) to anon, authenticated;
+
+-- What the Library home or store shows, in order. Editors can include hidden and
+-- out-of-window sections (marked "hidden") to preview them.
+create or replace function public.get_library(p_placement text, p_show_hidden boolean default false) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  with preview as (select p_show_hidden and public.is_editor() as enabled),
+  secs as (
+    select s.*, not public.section_live(s) as hidden from public.sections s where s.placement = p_placement
+  )
+  select coalesce(jsonb_agg(
+    jsonb_build_object('id', s.id, 'kind', s.kind, 'title', s.title, 'banner', s.banner,
+      'books', coalesce((
+        select jsonb_agg(jsonb_build_object('slug', b.slug, 'title', b.title, 'subtitle', b.subtitle, 'author', b.author,
+                 'cover', b.cover, 'access', b.access, 'template', b.template, 'reader', b.config->>'reader',
+                 'can_read', public.can_read(b.slug)) order by sb.position)
+        from public.section_books sb join public.books b on b.slug = sb.book_slug
+        where sb.section_id = s.id and b.status = 'published'), '[]'::jsonb))
+    || case when (select enabled from preview) then jsonb_build_object('hidden', s.hidden) else '{}'::jsonb end
+    order by s.position), '[]'::jsonb)
+  from secs s
+  where not s.hidden or (select enabled from preview)
+$$;
+revoke all on function public.get_library(text, boolean) from public;
+grant execute on function public.get_library(text, boolean) to anon, authenticated;
