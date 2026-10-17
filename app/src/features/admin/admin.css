@@ -120,3 +120,12 @@
 .adm-problems button { all: unset; cursor: pointer; font-size: 14px; color: var(--color-accent-800); }
 .adm-problems button:hover { text-decoration: underline; }
 .adm .toast { bottom: 24px; }
+
+/* History tab */
+.adm-history { max-width: 1080px; margin: 0 auto; padding: 28px 32px 120px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+.adm-log { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--color-divider); font-size: 15px; }
+.adm-version { display: flex; align-items: center; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--color-divider); }
+.adm-version .btn { min-height: 36px; font-size: 14px; }
+.adm-ver-title { font-family: var(--font-heading); font-weight: 600; font-size: 19px; }
+.adm-note-line { font-size: 14px; font-style: italic; color: var(--color-neutral-800); }
+@media (max-width: 900px) { .adm-history { grid-template-columns: 1fr; } }

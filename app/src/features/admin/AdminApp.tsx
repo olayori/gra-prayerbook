@@ -10,6 +10,7 @@ import ContentTab from './editor/ContentTab.tsx'
 import { DraftStore } from './editor/draftStore.ts'
 import { EditorContext, type Sel } from './editor/EditorContext.ts'
 import PublishDialog from './editor/PublishDialog.tsx'
+import HistoryTab from './HistoryTab.tsx'
 
 // The Admin Console (web only), rebuilt from design/src/admin. Sign-in uses the same
 // account and session as the books.
@@ -270,7 +271,7 @@ function Ready({ book, isAdmin, toastMsg, signOutNow }: { book: AdminBook; isAdm
               {isAdmin && <Route path="users" element={<Placeholder name="Users" />} />}
               <Route path="translations" element={<Placeholder name="Translations" />} />
               <Route path="insights" element={<Placeholder name="Insights" />} />
-              <Route path="history" element={<Placeholder name="History" />} />
+              <Route path="history" element={<HistoryTab />} />
               <Route path="*" element={<Navigate to="/admin/content" replace />} />
             </Routes>
           )}
