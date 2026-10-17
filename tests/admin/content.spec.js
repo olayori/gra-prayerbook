@@ -59,6 +59,37 @@ test('a second editor’s newer save is never overwritten', async ({ page, brows
   await other.close();
 });
 
+test('publishing from an idle console never overwrites a newer save', async ({ page, browser }) => {
+  await openJcfp(page, 'editor');
+  await page.getByLabel('Prayer 1.1.1', { exact: true }).fill('Editor, then idle');
+  await expect(page.getByText('Draft saved')).toBeVisible({ timeout: 5000 });
+
+  const other = await browser.newPage({ baseURL: 'http://localhost:4310/' });
+  await openJcfp(other, 'admin');
+  await other.getByLabel('Prayer 1.1.1', { exact: true }).fill('Newer, by the admin');
+  await expect(other.getByText('Draft saved')).toBeVisible({ timeout: 5000 });
+
+  await page.getByRole('button', { name: /^Publish/ }).click();
+  await page.getByRole('dialog', { name: 'Publish changes' }).getByRole('button', { name: 'Publish version 1' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Someone else changed the draft while you were editing.' })).toBeVisible({ timeout: 5000 });
+  expect(db("select max(version) from book_editions where book_slug = 'jcfp'")).toBe('0');
+  expect(draftText()).toBe('Newer, by the admin');
+  await other.close();
+});
+
+test('the same editor in two tabs gets the conflict too', async ({ page, browser }) => {
+  await openJcfp(page, 'editor');
+  const other = await browser.newPage({ baseURL: 'http://localhost:4310/' });
+  await openJcfp(other, 'editor');
+  await other.getByLabel('Prayer 1.1.1', { exact: true }).fill('From the phone');
+  await expect(other.getByText('Draft saved')).toBeVisible({ timeout: 5000 });
+
+  await page.getByLabel('Prayer 1.1.1', { exact: true }).fill('From the laptop');
+  await expect(page.getByRole('alert').filter({ hasText: 'Someone else changed the draft while you were editing.' })).toBeVisible({ timeout: 5000 });
+  expect(draftText()).toBe('From the phone');
+  await other.close();
+});
+
 test('leaving with unsaved changes asks first', async ({ page }) => {
   await openJcfp(page);
   await page.getByLabel('Prayer 1.1.1', { exact: true }).fill('Unsaved words');

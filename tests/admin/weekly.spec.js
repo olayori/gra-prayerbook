@@ -38,3 +38,31 @@ test('saving needs at least one prayer', async ({ page }) => {
   await page.locator('.adm-wk-save').click();
   await expect(page.getByRole('alert')).toHaveText('Add at least one prayer.');
 });
+
+test('an unsaved week isn’t lost by switching tab or book', async ({ page }) => {
+  await signIn(page, 'editor', 'admin/weekly');
+  await page.getByRole('button', { name: 'New week' }).click();
+  await page.getByLabel('Paste the whole week').fill(sheet);
+  await page.getByRole('button', { name: 'Split into prayers' }).click();
+  await expect(page.getByText('7 prayers', { exact: true })).toBeVisible();
+
+  let asked = '';
+  page.once('dialog', (d) => ((asked = d.message()), d.dismiss()));
+  await page.getByRole('link', { name: 'History' }).click();
+  expect(asked).toBe('Discard unsaved changes to this week?');
+  await expect(page).toHaveURL(/#\/admin\/weekly/);
+  await expect(page.getByText('7 prayers', { exact: true })).toBeVisible();
+
+  asked = '';
+  page.once('dialog', (d) => ((asked = d.message()), d.dismiss()));
+  await page.getByLabel('Book', { exact: true }).selectOption('jcfp');
+  expect(asked).toBe('Discard unsaved changes to this week?');
+  await expect(page.getByText('7 prayers', { exact: true })).toBeVisible();
+
+  const leaving = await page.evaluate(() => {
+    const e = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  expect(leaving).toBe(true);
+});

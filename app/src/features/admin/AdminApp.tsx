@@ -50,6 +50,10 @@ function Console() {
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
+  const leave = useRef<string | null>(null)
+  const holdLeave = useCallback((q: string | null) => void (leave.current = q), [])
+  const leaving = useCallback(() => leave.current, [])
+
   const toast = useCallback((m: string) => {
     clearTimeout(toastTimer.current)
     setToastMsg(m)
@@ -115,7 +119,7 @@ function Console() {
     }
   }
   return (
-    <AdminContext.Provider value={{ me: user!.email ?? '', userId: user!.id, role: role!, books, book, pickBook, toast }}>
+    <AdminContext.Provider value={{ me: user!.email ?? '', userId: user!.id, role: role!, books, book, pickBook, toast, holdLeave, leaving }}>
       <Ready key={book.slug} book={book} isAdmin={role === 'admin'} toastMsg={toastMsg} signOutNow={signOut} />
     </AdminContext.Provider>
   )
@@ -123,7 +127,7 @@ function Console() {
 
 // The console for one book: its draft store, header tools and tabs.
 function Ready({ book, isAdmin, toastMsg, signOutNow }: { book: AdminBook; isAdmin: boolean; toastMsg: string | null; signOutNow: () => void }) {
-  const { me, books, pickBook } = useAdmin()
+  const { me, books, pickBook, holdLeave, leaving } = useAdmin()
   const navigate = useNavigate()
   const keepExtras = book.config.content.includes('names') || book.config.content.includes('embed')
   const store = useMemo(() => new DraftStore(supabase, book.slug, me, keepExtras), [book.slug, me, keepExtras])
@@ -162,7 +166,7 @@ function Ready({ book, isAdmin, toastMsg, signOutNow }: { book: AdminBook; isAdm
     }
     // Ask before leaving with changes that aren't saved yet.
     const onLeave = (e: BeforeUnloadEvent) => {
-      if (store.save !== 'saved') {
+      if (store.save !== 'saved' || leaving()) {
         e.preventDefault()
         e.returnValue = ''
       }
@@ -173,13 +177,23 @@ function Ready({ book, isAdmin, toastMsg, signOutNow }: { book: AdminBook; isAdm
       removeEventListener('keydown', onKey)
       removeEventListener('beforeunload', onLeave)
     }
-  }, [store])
+  }, [store, leaving])
+
+  // Ask before dropping a tab's unsaved work; true when it's fine to go.
+  const mayLeave = () => {
+    const q = leaving()
+    if (q && !window.confirm(q)) return false
+    holdLeave(null)
+    return true
+  }
 
   const signOut = () => {
     if (store.save !== 'saved' && !window.confirm('Some changes aren’t saved yet. Sign out anyway?')) return
+    if (!mayLeave()) return
     signOutNow()
   }
   const switchBook = async (s: string) => {
+    if (!mayLeave()) return
     await store.flush()
     pickBook(s)
   }
@@ -228,7 +242,7 @@ function Ready({ book, isAdmin, toastMsg, signOutNow }: { book: AdminBook; isAdm
             </select>
             <nav aria-label="Sections" className="adm-tabs">
               {tabs.map((t) => (
-                <NavLink key={t.path} to={`/admin/${t.path}`} className={({ isActive }) => (isActive ? 'on' : '')}>
+                <NavLink key={t.path} to={`/admin/${t.path}`} onClick={(e) => !mayLeave() && e.preventDefault()} className={({ isActive }) => (isActive ? 'on' : '')}>
                   {t.label}
                 </NavLink>
               ))}

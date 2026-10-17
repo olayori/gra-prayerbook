@@ -9,7 +9,7 @@ type Row = { src_hash: string; lang: Lang; src: string; out: string; edited: boo
 const LANGS: [Lang, string][] = [['fr', 'Français'], ['es', 'Español']]
 
 export default function TranslationsTab() {
-  const { me, toast } = useAdmin()
+  const { me, toast, holdLeave } = useAdmin()
   const [lang, setLang] = useState<Lang>('fr')
   const [q, setQ] = useState('')
   const [rows, setRows] = useState<Row[] | null>(null)
@@ -41,6 +41,11 @@ export default function TranslationsTab() {
     // oxlint-disable-next-line react/set-state-in-effect
     void load('fr', '')
   }, [load])
+  const dirty = Object.entries(edit).some(([h, v]) => rows?.find((r) => r.src_hash === h)?.out !== v)
+  useEffect(() => {
+    holdLeave(dirty ? 'Discard unsaved translation changes?' : null)
+    return () => holdLeave(null)
+  }, [dirty, holdLeave])
   const search = (lg = lang) => {
     setLoading(true)
     void load(lg, q)

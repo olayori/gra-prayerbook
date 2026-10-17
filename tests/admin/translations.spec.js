@@ -25,3 +25,15 @@ test('search, edit and save a translation', async ({ page }) => {
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByText('No translations match that search.')).toBeVisible();
 });
+
+test('an unsaved correction asks before switching tab', async ({ page }) => {
+  db("insert into public.translations (src_hash, lang, src, out) values ('e2e-2', 'fr', 'Lord, hear us', 'Seigneur, écoute-nous');");
+  await signIn(page, 'editor', 'admin/translations');
+  const row = page.locator('.adm-tr-row').filter({ hasText: 'Lord, hear us' });
+  await row.getByRole('textbox').fill('Seigneur, entends-nous');
+  let asked = '';
+  page.once('dialog', (d) => ((asked = d.message()), d.dismiss()));
+  await page.getByRole('link', { name: 'Content' }).click();
+  expect(asked).toBe('Discard unsaved translation changes?');
+  await expect(row.getByRole('textbox')).toHaveValue('Seigneur, entends-nous');
+});

@@ -12,6 +12,10 @@ export type AdminCtx = {
   book: AdminBook
   pickBook: (slug: string) => void
   toast: (message: string) => void
+  // A tab with unsaved work outside the draft (Weekly, Translations) sets the question to
+  // ask before switching tab or book, signing out or closing the page; null when clean.
+  holdLeave: (question: string | null) => void
+  leaving: () => string | null
 }
 
 export const AdminContext = createContext<AdminCtx | null>(null)

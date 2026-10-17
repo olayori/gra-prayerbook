@@ -28,8 +28,11 @@ export class DraftStore {
   private baseV = 0
   private draftAt: string | null = null
   private seq = 0
-  private saving = false
+  private inflight?: Promise<void>
+  private stopped = false
   private timer?: ReturnType<typeof setTimeout>
+  // This console session; the server lets a session retry its own save (save_draft).
+  private readonly client = crypto.randomUUID()
   private listeners = new Set<() => void>()
   private sb: SupabaseClient
   readonly slug: string
@@ -140,18 +143,24 @@ export class DraftStore {
     this.seq++
     this.save = 'unsaved'
     this.emit()
-    clearTimeout(this.timer)
-    this.timer = setTimeout(() => void this.flush(), SAVE_DELAY)
+    this.later(SAVE_DELAY)
   }
 
-  async flush() {
+  // force: ask the server even when nothing is unsaved, so a stale draft is caught (publish).
+  async flush(force = false): Promise<void> {
     clearTimeout(this.timer)
-    if (this.conflict || !this.draft || this.save === 'saved') return
-    if (this.saving) {
-      this.timer = setTimeout(() => void this.flush(), 800)
-      return
-    }
-    this.saving = true
+    while (this.inflight) await this.inflight
+    if (this.conflict || !this.draft || (this.save === 'saved' && !force)) return
+    this.inflight = this.saveNow().finally(() => (this.inflight = undefined))
+    await this.inflight
+  }
+
+  private later(ms: number) {
+    clearTimeout(this.timer)
+    if (!this.stopped) this.timer = setTimeout(() => void this.flush(), ms)
+  }
+
+  private async saveNow() {
     const seq = this.seq
     this.save = 'saving'
     this.emit()
@@ -162,6 +171,7 @@ export class DraftStore {
         p_log: this.log.slice(-500),
         p_base_version: this.baseV,
         p_expected_at: this.draftAt,
+        p_client: this.client,
       })
       if (error) throw error
       if (data.conflict) {
@@ -171,21 +181,20 @@ export class DraftStore {
         this.draftAt = data.updated_at
         this.savedOnce = true
         this.save = seq === this.seq ? 'saved' : 'unsaved'
-        if (this.save === 'unsaved') this.timer = setTimeout(() => void this.flush(), SAVE_DELAY)
+        if (this.save === 'unsaved') this.later(SAVE_DELAY)
       }
     } catch {
       this.save = 'error'
-      this.timer = setTimeout(() => void this.flush(), RETRY_DELAY)
+      this.later(RETRY_DELAY)
     }
-    this.saving = false
     this.emit()
   }
 
   // ---- publishing ----
   async publish(note: string): Promise<{ ok: true; version: number } | { ok: false; error: string }> {
     if (!this.draft || this.problems.length) return { ok: false, error: '' }
-    await this.flush()
-    if (this.conflict) return { ok: false, error: '' }
+    await this.flush(true)
+    if (this.conflict || this.save !== 'saved') return { ok: false, error: this.conflict ? '' : 'Couldn’t save the draft. Try again.' }
     const data = clean(this.draft, this.keepExtras)
     const { data: v, error } = await this.sb.rpc('publish_edition', {
       p_slug: this.slug,
@@ -212,7 +221,9 @@ export class DraftStore {
     return { ok: true, version: v as number }
   }
 
+  // Stops timers; an explicit flush() still runs, so leaving the console can save.
   stop() {
+    this.stopped = true
     clearTimeout(this.timer)
   }
 }

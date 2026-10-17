@@ -30,7 +30,7 @@ function statusOf(publishAt: string | null | undefined): [string, string] {
 }
 
 export default function WeeklyTab() {
-  const { me, toast } = useAdmin()
+  const { me, toast, holdLeave } = useAdmin()
   const [list, setList] = useState<Row[] | null>(null)
   const [wk, setWk] = useState<Week | null>(null)
   const [paste, setPaste] = useState('')
@@ -52,6 +52,10 @@ export default function WeeklyTab() {
   useEffect(() => {
     void load()
   }, [load])
+  useEffect(() => {
+    holdLeave(dirty ? 'Discard unsaved changes to this week?' : null)
+    return () => holdLeave(null)
+  }, [dirty, holdLeave])
 
   // force: re-opening the week just saved, so there is nothing to discard.
   const open = (row: Row | null, force = false) => {
