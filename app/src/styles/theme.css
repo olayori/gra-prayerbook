@@ -1,0 +1,30 @@
+/* Page themes from the design (book template). Light is the token defaults. */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #1a1714; --color-surface: #25201b; --color-text: #ece3d4;
+  --color-divider: color-mix(in srgb, #ece3d4 15%, transparent);
+  --color-neutral-100: #2b251f; --color-neutral-200: #353331; --color-neutral-300: #45423f; --color-neutral-400: #5c5855;
+  --color-neutral-500: #7d7979; --color-neutral-600: #9b9797; --color-neutral-700: #bab6b6; --color-neutral-800: #d7d3d3; --color-neutral-900: #eae7e7;
+  --color-accent: #d4a55c; --color-accent-100: #2e2416; --color-accent-200: #3d301c; --color-accent-300: #5c4724; --color-accent-400: #a07a3c;
+  --color-accent-500: #c4974f; --color-accent-600: #dcb06a; --color-accent-700: #e6c286; --color-accent-800: #f0d7ab; --color-accent-900: #faeedb;
+  --shadow-sm: 0 0 0 1px rgba(255, 255, 255, .06);
+  --shadow-md: 0 0 0 1px rgba(255, 255, 255, .07), 0 6px 18px rgba(0, 0, 0, .45);
+  --shadow-lg: 0 0 0 1px rgba(255, 255, 255, .08), 0 14px 40px rgba(0, 0, 0, .55);
+}
+html[data-theme='sepia'] {
+  --color-bg: #f3ead6; --color-surface: #ece1c8; --color-text: #3a2e20;
+  --color-divider: color-mix(in srgb, #3a2e20 14%, transparent);
+  --color-neutral-100: #ebe0c6; --color-neutral-200: #e0d3b5; --color-neutral-300: #cdbd9b; --color-neutral-400: #b3a17d;
+  --color-neutral-500: #938260; --color-neutral-600: #76664a; --color-neutral-700: #5d4f38; --color-neutral-800: #483c2a; --color-neutral-900: #2f261a;
+  --color-accent-100: #ecdcb8; --color-accent-200: #e4cc9c;
+}
+html[data-theme='dark'] [data-logo='light'],
+html:not([data-theme='dark']) [data-logo='dark'] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { margin: 0; background: var(--color-bg); color: var(--color-text); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+a { color: var(--color-accent-700); text-decoration: none; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}

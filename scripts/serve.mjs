@@ -14,8 +14,9 @@ const APP = fileURLToPath(new URL('../app/dist', import.meta.url));
 const BASE = '/overcomers/';
 const PORT = Number(process.env.PORT || 4173);
 const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json',
-  '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml',
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
+  '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
 };
 
 createServer((req, res) => {
