@@ -26,7 +26,7 @@ export default function LockScreen({ title, onClose }: { title: string; onClose?
   })
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    void auth.submit(f).then(() => setF((x) => ({ ...x, password: '', code: '' })))
+    void auth.submit(f, !onClose).then(() => setF((x) => ({ ...x, password: '', code: '' })))
   }
 
   return (
@@ -76,7 +76,7 @@ export default function LockScreen({ title, onClose }: { title: string; onClose?
             )}
             {(up || m === 'code') && (
               <label>
-                <span>Registration code</span>
+                <span>{onClose && up ? 'Registration code (optional)' : 'Registration code'}</span>
                 <input className="input" type="password" autoComplete="off" {...field('code')} />
               </label>
             )}

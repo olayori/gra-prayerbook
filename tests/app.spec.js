@@ -98,6 +98,28 @@ test.describe('access', () => {
     expect(await page.evaluate(() => localStorage.getItem('gra-covenant-prayed'))).toBe('{"s-1-1-1":1}');
   });
 
+  test('a free-book reader can create an account without a registration code', async ({ page, context }) => {
+    await context.route(/supabase\.co\/auth\/v1\/signup/, (route) => route.fulfill({ json: { id: 'new-user', email: 'reader@test', identities: [] } }));
+    await page.goto('app/#/book/jcfp');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Sign in or create account' }).click();
+    await page.getByRole('button', { name: 'Create account' }).first().click();
+    await expect(page.getByLabel(/Registration code/)).toBeVisible();
+    await page.getByLabel('Email').fill('reader@test');
+    await page.getByLabel('Password').fill('a-long-password');
+    await page.locator('.lock-form').getByRole('button', { name: 'Create account' }).click();
+    await expect(page.getByRole('status')).toContainText('We sent a confirmation link to reader@test');
+  });
+
+  test('Covenant sign-up still needs the registration code', async ({ page }) => {
+    await page.goto('app/#/book/covenant');
+    await page.getByRole('button', { name: 'Create account' }).first().click();
+    await page.getByLabel('Email').fill('reader@test');
+    await page.getByLabel('Password').fill('a-long-password');
+    await page.locator('.lock-form').getByRole('button', { name: 'Create account' }).click();
+    await expect(page.getByRole('alert')).toHaveText('Enter the registration code from GRA.');
+  });
+
   test('signed-out JCFP reader can open sign-in from Settings and dismiss it', async ({ page }) => {
     await page.goto('app/#/book/jcfp');
     await page.getByRole('button', { name: 'Settings' }).click();

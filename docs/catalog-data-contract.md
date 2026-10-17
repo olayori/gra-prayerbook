@@ -15,7 +15,13 @@ Use the existing Supabase client and settings the pages already have:
 - Sign-in session storage key: `gra-covenant-auth`. Keep it, so people stay signed in.
 - Calls: `const { data, error } = await sb.rpc('<name>', { …args })`.
 
-Pages call **only** the four functions below. Never select from tables directly.
+**For books and shelves**, pages use **only** the four functions below; never select book or shelf tables directly.
+
+**Everything else keeps the calls the pages make today.** Don't remove them:
+- sign-in and accounts (`sb.auth.*`, including password reset);
+- membership (`members`, `redeem_code`) and the admin badge (`admins`);
+- progress sync (`book_state` for Covenant, `library_state` for other books, §8);
+- usage counts (`log_usage`).
 
 ## 3. The four calls
 
@@ -157,6 +163,6 @@ Editors can switch sections on and off, reorder them and date them. The page jus
 
 ## 9. Don't
 
-- Select from tables directly. Use the four calls.
+- Read books, editions, entries or shelves from tables directly; use the four calls. (Sync, sign-in, membership and usage calls stay as they are, §2.)
 - Embed book content in the page (no `prayersData` / `jcfpData` resources). Content comes from `get_edition` / `get_entries`.
 - Keep the access code, its hash, or the device unlock.

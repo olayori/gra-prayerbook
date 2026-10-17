@@ -100,7 +100,8 @@ class AuthStore {
   setMode = (mode: AuthMode) => this.set({ mode, error: '', message: '' })
   clearError = () => this.state.error && this.set({ error: '' })
 
-  async submit(f: { email: string; password: string; name: string; code: string }) {
+  // requireCode: members books need the GRA registration code to sign up; free books don't.
+  async submit(f: { email: string; password: string; name: string; code: string }, requireCode = true) {
     const m = this.state.mode, email = f.email.trim(), pw = f.password
     this.set({ busy: true, error: '', message: '' })
     const fail = (t: string) => this.set({ busy: false, error: t })
@@ -114,9 +115,9 @@ class AuthStore {
       if (m === 'up') {
         if (!email) return fail('Enter your email.')
         if (pw.length < 8) return fail('Use a password of at least 8 characters.')
-        if (!f.code.trim()) return fail('Enter the registration code from GRA.')
+        if (requireCode && !f.code.trim()) return fail('Enter the registration code from GRA.')
         // Redeemed by the server once the account exists (onSession → redeem_code).
-        save('gra-covenant-pendingCode', f.code.trim())
+        if (f.code.trim()) save('gra-covenant-pendingCode', f.code.trim())
         const { data, error } = await supabase.auth.signUp({ email, password: pw, options: { data: { name: f.name.trim() }, emailRedirectTo: here() } })
         if (error) return fail(errText(error))
         if (!data.session) this.set({ busy: false, mode: 'in', message: `We sent a confirmation link to ${email}. Open it on this device to finish creating your account.` })
