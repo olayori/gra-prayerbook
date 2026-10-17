@@ -1,0 +1,34 @@
+/* Admin Console. Values follow design/src/admin/template.html. */
+.adm { min-height: 100vh; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.adm-loading { min-height: 100vh; display: grid; place-items: center; font-family: var(--font-heading); font-style: italic; font-size: 20px; color: var(--color-neutral-700); }
+.adm-center { min-height: 100vh; display: grid; place-items: center; padding: 24px; font-family: var(--font-body); }
+.adm-center-inner { max-width: 420px; width: 100%; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.adm-h1 { margin: 0; font-family: var(--font-heading); font-weight: 400; font-size: 38px; line-height: 1.1; }
+.adm-h1.small { font-size: 32px; }
+.adm-row { display: flex; gap: 10px; }
+.adm-pad { padding: 24px; }
+.adm-signin { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 18px; text-align: left; }
+.adm-signin-logo { display: block; height: 56px; width: auto; align-self: center; }
+.adm-signin-head { text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.adm-sub { font-family: var(--font-heading); font-style: italic; font-size: 17px; }
+.adm-signin .btn { min-height: 46px; font-size: 16px; }
+.adm-note { margin: 0; text-align: center; font-size: 13px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--color-neutral-700); }
+.field .input { font-size: 16px; min-height: 44px; color: var(--color-text); }
+
+.adm-hdr { position: sticky; top: 0; z-index: 20; background: var(--color-bg); border-bottom: 1px solid var(--color-divider); }
+.adm-bar { display: flex; align-items: center; gap: 20px; padding: 0 20px; min-height: 60px; flex-wrap: wrap; }
+.adm-brand { display: flex; align-items: center; gap: 10px; }
+.adm-brand > div { display: flex; flex-direction: column; line-height: 1.1; }
+.adm-mark { display: block; height: 30px; width: auto; }
+.adm-title { font-family: var(--font-heading); font-weight: 600; font-size: 20px; }
+.adm-role { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--color-neutral-700); }
+.adm-book { min-height: 38px; width: auto; max-width: 260px; font-size: 14px; padding: 4px 10px; }
+.adm-tabs { display: flex; align-items: stretch; align-self: stretch; gap: 4px; }
+.adm-tabs a { padding: 0 12px; display: flex; align-items: center; font-size: 15px; color: var(--color-text); text-decoration: none; }
+.adm-tabs a:hover { color: var(--color-accent-700); }
+.adm-tabs a.on { color: var(--color-accent-700); box-shadow: inset 0 -2px 0 var(--color-accent); }
+.adm-tools { display: flex; align-items: center; gap: 8px; }
+.adm-tools a { font-size: 14px; white-space: nowrap; }
+.adm-tools .btn { min-height: 38px; font-size: 14px; }
+.adm-main { min-height: 0; }

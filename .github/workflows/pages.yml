@@ -26,8 +26,26 @@ jobs:
       - run: npm run verify
         env:
           CI: 'true'
+  admin-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start -x studio,edge-runtime,logflare,vector,imgproxy
+      - run: sudo apt-get install -y postgresql-client
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:admin
+        env:
+          CI: 'true'
   deploy:
-    needs: verify
+    needs: [verify, admin-e2e]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:

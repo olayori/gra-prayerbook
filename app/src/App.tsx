@@ -6,6 +6,7 @@ import { SettingsProvider } from './lib/SettingsProvider.tsx'
 // Each screen loads on demand, so the start page doesn't pull in every screen and the Supabase client.
 const Reader = lazy(() => import('./features/book/Reader.tsx'))
 const WeeklyPrayers = lazy(() => import('./features/weekly/WeeklyPrayers.tsx'))
+const AdminApp = lazy(() => import('./features/admin/AdminApp.tsx'))
 
 // Screens are ported from the Claude Design pages (design/src/) one at a time.
 // Until a screen exists here, the live site keeps serving it.
@@ -20,6 +21,7 @@ export default function App() {
               <Route path="/weekly" element={<WeeklyPrayers />} />
               <Route path="/weekly/:weekOf" element={<WeeklyPrayers />} />
               <Route path="/book/:book" element={<Reader />} />
+              <Route path="/admin/*" element={<AdminApp />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
