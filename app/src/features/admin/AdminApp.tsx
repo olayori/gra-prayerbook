@@ -11,6 +11,7 @@ import { DraftStore } from './editor/draftStore.ts'
 import { EditorContext, type Sel } from './editor/EditorContext.ts'
 import PublishDialog from './editor/PublishDialog.tsx'
 import HistoryTab from './HistoryTab.tsx'
+import InsightsTab from './insights/InsightsTab.tsx'
 import UsersTab from './users/UsersTab.tsx'
 import WeeklyTab from './weekly/WeeklyTab.tsx'
 
@@ -272,7 +273,7 @@ function Ready({ book, isAdmin, toastMsg, signOutNow }: { book: AdminBook; isAdm
               <Route path="weekly" element={<WeeklyTab />} />
               {isAdmin && <Route path="users" element={<UsersTab />} />}
               <Route path="translations" element={<Placeholder name="Translations" />} />
-              <Route path="insights" element={<Placeholder name="Insights" />} />
+              <Route path="insights" element={<InsightsTab />} />
               <Route path="history" element={<HistoryTab />} />
               <Route path="*" element={<Navigate to="/admin/content" replace />} />
             </Routes>
