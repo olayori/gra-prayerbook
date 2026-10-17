@@ -166,6 +166,8 @@ A `books` table, one row per book:
 
 ### 6. The new Admin Console (owner decision, 2026-10-16)
 
+**Status (2026-10-17):** Phase 2A done. The new console (`app/src/features/admin`) replaced the Claude Design one at `/overcomers/admin/`, which now redirects to `app/#/admin/content`. Not carried over: the "Prepare in French and Spanish" button. Phase 2B (books, templates, covers, shelves, import) is next.
+
 **Where it's built:** the Admin Console is rebuilt in `app/` as a web-only admin area (not included in the store apps), using the Classical design tokens. It replaces the Claude Design Admin Console at the same address (`/overcomers/admin/`) once it can do everything the current one does:
 - edit, publish, view versions of and restore Covenant and Jesus Chosen Fast and Prayer;
 - the weekly prayers editor with scheduled `publish_at`;

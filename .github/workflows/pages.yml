@@ -60,6 +60,18 @@ jobs:
       - run: npm ci
       # The new app is published as a preview next to the live site: /overcomers/app/
       - run: npm run app:build && cp -R app/dist site/app
+      # /admin/ is the new app's Admin Console (app/src/features/admin).
+      - name: Admin Console redirect
+        run: |
+          mkdir -p site/admin
+          cat > site/admin/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Admin Console</title><meta name="robots" content="noindex">
+          <meta http-equiv="refresh" content="0; url=../app/#/admin/content">
+          <script>location.replace('../app/#/admin/content')</script>
+          </head><body><p><a href="../app/#/admin/content">Opening the Admin Console…</a></p></body></html>
+          HTML
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

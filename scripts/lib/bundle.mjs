@@ -50,9 +50,9 @@ export const PAGES = {
   book: { targets: ['covenant/index.html', 'jcfp/index.html', 'weekly/index.html'] },
   read: { targets: ['read/index.html'] },
   bible: { targets: ['bible/index.html'] },
-  admin: { targets: ['admin/index.html'] },
 };
 
+// 'admin' is still recognised so pull-design can skip it: the Admin Console is app code now.
 export function classify({ title, template }) {
   const code = appScript(template);
   if (/^Admin Console/.test(title)) return 'admin';

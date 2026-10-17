@@ -91,6 +91,7 @@ export default function UsersTab() {
     a.remove()
   }
 
+  const close = useCallback(() => setSelId(null), [])
   const sel = selId ? all.find((x) => x.id === selId) : undefined
   const [sk, sd] = sort
   const activeWeek = all.filter((u) => u.active && now.getTime() - new Date(u.active).getTime() < 7 * 864e5).length
@@ -165,7 +166,7 @@ export default function UsersTab() {
           <p className="adm-small">Only people who sign in with an account appear here. Readers who use the access code alone keep their progress on their device.</p>
         </>
       )}
-      {sel && <UserPanel u={sel} pub={pub} now={now} self={sel.id === userId} busy={busy} onClose={() => setSelId(null)} onAct={(k) => void act(k, sel)} toast={toast} />}
+      {sel && <UserPanel u={sel} pub={pub} now={now} self={sel.id === userId} busy={busy} onClose={close} onAct={(k) => void act(k, sel)} toast={toast} />}
     </div>
   )
 }
@@ -192,6 +193,11 @@ function UserPanel({ u, pub, now, self, busy, onClose, onAct, toast }: { u: User
   const name = u.name || u.email.split('@')[0]
   const stats: [number | string, string][] = [[done, `Prayers checked · ${total ? Math.round((done / total) * 100) : 0}%`], [u.streak, 'Current streak'], [u.best, 'Longest streak'], [u.days, 'Days prayed'], [u.fav, 'Favorites'], [u.bm, 'Bookmarks']]
   const roles: [UserRow['role'], string][] = [[null, 'Reader'], ['editor', 'Editor'], ['admin', 'Admin']]
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [onClose])
   const pick = (r: UserRow['role']) => {
     if (self && r !== 'admin') toast('You can’t remove your own admin access')
     else if (u.role !== r) onAct({ role: r })

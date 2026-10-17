@@ -4,7 +4,7 @@
 //   npm run design:pull -- <source...> [--as <page>] [--dry-run]
 //
 // A source can be an .html export, a folder of them, a .zip, or an http(s) URL to either.
-// Each export is identified automatically (home, book, read, bible, admin); use --as to
+// Each export is identified automatically (home, book, read, bible); use --as to
 // force it when importing a single file. The book export is written to covenant/, jcfp/
 // and weekly/ (the page picks its book from the URL). When anything changes, the service
 // worker cache version is bumped so installed apps pick up the new pages.
@@ -27,7 +27,7 @@ const forced = asIdx >= 0 ? args[asIdx + 1] : null;
 const sources = args.filter((a, i) => !a.startsWith('--') && !(asIdx >= 0 && i === asIdx + 1));
 
 if (!sources.length) {
-  console.error('usage: npm run design:pull -- <file.html|folder|file.zip|url>... [--as home|book|read|bible|admin] [--dry-run]');
+  console.error('usage: npm run design:pull -- <file.html|folder|file.zip|url>... [--as home|book|read|bible] [--dry-run]');
   process.exit(2);
 }
 if (forced && !PAGES[forced]) {
@@ -72,6 +72,10 @@ for (const file of files) {
   if (!page) {
     console.error(`??     ${file} — could not tell which page "${bundle.title}" is; re-run with --as <page>`);
     process.exitCode = 1;
+    continue;
+  }
+  if (!PAGES[page]) {
+    console.log(`skip   ${file} (the Admin Console is now app code in app/src/features/admin, not a design export)`);
     continue;
   }
   if (found[page]) console.warn(`warn   two exports look like "${page}"; using ${file}`);

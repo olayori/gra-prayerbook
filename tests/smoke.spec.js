@@ -10,7 +10,6 @@ const PAGES = [
   { path: 'weekly/', name: 'Weekly Kingdom Prayers' },
   { path: 'read/', name: 'book reader' },
   { path: 'bible/', name: 'Bible' },
-  { path: 'admin/', name: 'admin console' },
 ];
 
 test.beforeEach(async ({ context }) => {

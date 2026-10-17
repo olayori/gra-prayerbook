@@ -33,6 +33,8 @@ test('you can’t remove your own admin access or delete yourself', async ({ pag
   await expect(page.getByText('You can’t remove your own admin access')).toBeVisible();
   expect(roleOf(ACCOUNTS.admin.email)).toBe('admin');
   await expect(panel.getByRole('button', { name: 'Delete account' })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
 });
 
 test('Export CSV', async ({ page }) => {
