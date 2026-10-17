@@ -19,3 +19,18 @@ test('an admin also sees Users', async ({ page }) => {
   await signIn(page, 'admin');
   await expect(tabs(page)).toHaveText(['Content', 'Weekly', 'Users', 'Translations', 'Insights', 'History']);
 });
+
+test('the book picker lists the prayer books and remembers the choice', async ({ page }) => {
+  await signIn(page, 'editor');
+  const picker = page.getByLabel('Book');
+  await expect(picker.locator('option')).toHaveText(['Book of Covenant Prayers', 'Jesus Chosen Fast and Prayer Prayer Manual']);
+  await picker.selectOption('jcfp');
+  await page.reload();
+  await expect(page.getByLabel('Book')).toHaveValue('jcfp');
+});
+
+test('editors are sent from Users back to Content', async ({ page }) => {
+  await signIn(page, 'editor', 'admin/users');
+  await expect(page).toHaveURL(/#\/admin\/content$/);
+});
+
