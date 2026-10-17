@@ -102,7 +102,7 @@ Book content then moves out of public JSON into Supabase tables or Storage, read
 ## 5. Roadmap
 
 1. **Done (this bootstrap):** the repo is an npm project; schema in tracked migrations; design import, extraction and checks; smoke tests; CI that tests before deploying; one-command deploys.
-2. **Protect content and add entitlements:** `products` and `entitlements` migrations, content behind RLS or Storage, remove the client-side guest unlock, enable leaked-password protection, then build or remove the `translate` function.
+2. **Book catalog and entitlements:** Phase 1 done 2026-10-17 (catalog, templates, editions, entitlements, shelves in Supabase; see `docs/superpowers/specs/2026-10-16-book-catalog-design.md` and `docs/catalog-data-contract.md`). Next: the new Admin Console (Phase 2), then the app reader on the catalog. Originally planned as **Protect content and add entitlements:** `products` and `entitlements` migrations, content behind RLS or Storage, remove the client-side guest unlock, enable leaked-password protection, then build or remove the `translate` function.
 3. **App codebase (option B):** ~~scaffold `app/`~~ (done, with Weekly Kingdom Prayers ported), port the book reader first (the biggest and most-used page), then home, reader, Bible and admin. Retire each `site/` bundle as its page is replaced.
 4. **Native:** Capacitor iOS/Android, local notifications, offline downloads, RevenueCat Test Store.
 5. **Stores:** developer accounts, sandbox and TestFlight / internal testing, listings and privacy labels, submission.
