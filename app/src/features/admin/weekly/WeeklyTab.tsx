@@ -53,8 +53,9 @@ export default function WeeklyTab() {
     void load()
   }, [load])
 
-  const open = (row: Row | null) => {
-    if (dirty && !window.confirm('Discard unsaved changes to this week?')) return
+  // force: re-opening the week just saved, so there is nothing to discard.
+  const open = (row: Row | null, force = false) => {
+    if (!force && dirty && !window.confirm('Discard unsaved changes to this week?')) return
     setPaste('')
     setNote('')
     setErr('')
@@ -129,10 +130,8 @@ export default function WeeklyTab() {
       return setErr(/duplicate|unique/i.test(m) ? 'There is already a week with that date. Open it from the list instead.' : 'Couldn’t save. ' + m)
     }
     await load()
-    setDirty(false)
     const mode = wk.mode
-    open(data as Row)
-    setDirty(false)
+    open(data as Row, true)
     toast(mode === 'now' ? 'Live for all readers' : mode === 'sched' ? 'Scheduled' : mode === 'live' ? 'Saved. Readers see the change next time they open the book.' : 'Saved as draft')
   }
 
