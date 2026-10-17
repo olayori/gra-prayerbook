@@ -1,17 +1,17 @@
 import Sheet from '../../components/Sheet.tsx'
 import { useState } from 'react'
-import { auth, isGuest, useAuth } from '../../lib/auth.ts'
+import { auth, useAuth } from '../../lib/auth.ts'
 import { Speaker, ttsSupported, voiceOptions, VOICE_HINT } from '../../lib/speech.ts'
 import { FONTS, useSettings, type Settings } from '../../lib/settings.ts'
 import type { BookStore, SyncState } from './store.ts'
 
 // The design's "Aa" sheet. Not yet ported: language.
-export default function SettingsSheet({ store, onClose }: { store: BookStore; onClose: () => void }) {
+export default function SettingsSheet({ store, onClose, onSignIn }: { store: BookStore; onClose: () => void; onSignIn: () => void }) {
   const { settings: st, set } = useSettings()
   return (
     <Sheet title="Settings" onClose={onClose}>
       <div className="settings">
-        <Account store={store} onClose={onClose} />
+        <Account store={store} onClose={onClose} onSignIn={onSignIn} />
         <Group label="Text size" cols={6}>
           {([[15, 14, 'Small'], [17, 17, 'Medium'], [19, 20, 'Large'], [22, 23, 'Extra large'], [25, 26, 'Larger'], [29, 30, 'Largest']] as const).map(
             ([v, fs, aria]) => (
@@ -104,7 +104,7 @@ function syncLabel(sync: SyncState, at: number | null) {
   return 'Progress syncs across your devices'
 }
 
-function Account({ store, onClose }: { store: BookStore; onClose: () => void }) {
+function Account({ store, onClose, onSignIn }: { store: BookStore; onClose: () => void; onSignIn: () => void }) {
   const { user } = useAuth()
   if (user) {
     const signOut = async () => {
@@ -131,17 +131,16 @@ function Account({ store, onClose }: { store: BookStore; onClose: () => void }) 
       </div>
     )
   }
-  if (!isGuest()) return null
   return (
     <div className="account">
       <span className="setting-label">Account</span>
-      <p>You’re using an access code. Your progress is saved on this device only. Create an account to keep it in sync on your phone and iPad.</p>
+      <p>Sign in to keep your progress in sync on all your devices.</p>
       <button
         className="btn btn-secondary"
         style={{ alignSelf: 'flex-start' }}
         onClick={() => {
           onClose()
-          auth.toAccount()
+          onSignIn()
         }}
       >
         Sign in or create account

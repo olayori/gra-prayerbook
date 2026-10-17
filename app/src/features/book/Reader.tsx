@@ -3,7 +3,7 @@ import { Link, Navigate, useParams } from 'react-router'
 import Sheet from '../../components/Sheet.tsx'
 import { useToast } from '../../components/Toast.tsx'
 import { ArrowRight, ArrowUp, Bookmark, CheckAll, ChevronLeft, DoneCircle, FocusIcon, Gear, Moon, Ring, Speaker, Sun } from '../../components/icons.tsx'
-import { useAuth } from '../../lib/auth.ts'
+import { auth, useAuth } from '../../lib/auth.ts'
 import { FONTS, useSettings } from '../../lib/settings.ts'
 import { ttsSupported } from '../../lib/speech.ts'
 import { supabase } from '../../lib/supabase.ts'
@@ -42,8 +42,9 @@ function BookReader({ book }: { book: BookConfig }) {
   }, [book, store])
 
   // Account sync: pull on open, when the app returns to the foreground or comes back
-  // online, and every 2 minutes (as the design does).
-  const syncUser = locked ? null : user
+  // online, and every 2 minutes (as the design does). Free books sync for any signed-in
+  // reader; members books only once membership is confirmed.
+  const syncUser = user && (book.access === 'free' || !locked) ? user : null
   useEffect(() => {
     store.setUser(syncUser)
     if (!syncUser) return
@@ -72,7 +73,7 @@ function BookReader({ book }: { book: BookConfig }) {
     }
   }, [store])
 
-  if (locked) return <LockScreen title={book.title} />
+  if (book.access === 'members' && locked) return <LockScreen title={book.title} />
   if (failed) return <p className="status">Couldn’t open this book. Please try again.</p>
   if (!store.data.length) return <p className="status">Opening…</p>
   return <BookPages book={book} store={store} />
@@ -83,6 +84,18 @@ function BookPages({ book, store }: { book: BookConfig; store: BookStore }) {
   const [toast, showToast] = useToast()
   const [sheet, setSheet] = useState<'aa' | Scripture | null>(null)
   const [focus, setFocus] = useState<FocusStart | null>(null)
+  const [signIn, setSignIn] = useState(false) // optional sign-in for free books
+  const { user } = useAuth()
+  // Open the sign-in screen; it closes itself once someone is signed in.
+  const openSignIn = () => {
+    setSignIn(true)
+    const off = auth.subscribe(() => {
+      if (auth.getState().user) {
+        setSignIn(false)
+        off()
+      }
+    })
+  }
   const weeks = useWeeks(book.key === 'jcfp')
   useEffect(() => store.setToastHandler(showToast), [store, showToast])
   // Re-rendered by the store subscription in BookReader; building the view is cheap.
@@ -221,7 +234,8 @@ function BookPages({ book, store }: { book: BookConfig; store: BookStore }) {
           }}
         />
       )}
-      {sheet === 'aa' && <SettingsSheet store={store} onClose={() => setSheet(null)} />}
+      {sheet === 'aa' && <SettingsSheet store={store} onClose={() => setSheet(null)} onSignIn={openSignIn} />}
+      {signIn && !user && <LockScreen title={book.title} onClose={() => setSignIn(false)} />}
       {sheet && sheet !== 'aa' && (
         <Sheet title="Scripture" onClose={() => setSheet(null)}>
           <div className="verse-sheet">

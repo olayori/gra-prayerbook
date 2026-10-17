@@ -13,7 +13,8 @@ const weeks = [
   },
 ];
 
-// Guest unlock, as the live site stores it (the access code's SHA-256).
+// The old guest unlock as the live site stores it. The app ignores it now; the live
+// page still honours it until its redesign.
 const UNLOCKED = 'e6a0edc6786aea7bad85cc9fec671bfa84763bd161c450a579df4b1087b5d270';
 
 test.beforeEach(async ({ context }) => {
@@ -23,7 +24,21 @@ test.beforeEach(async ({ context }) => {
   await context.route(/supabase\.co\/rest\/v1\/weekly_prayers/, (route) => route.fulfill({ json: weeks }));
 });
 
-const unlock = (page) => page.addInitScript((h) => localStorage.setItem('gra-covenant-unlocked', h), UNLOCKED);
+const unlockLiveSite = (page) => page.addInitScript((h) => localStorage.setItem('gra-covenant-unlocked', h), UNLOCKED);
+
+// A signed-in member: a stored session (not expired, so no network check) plus the
+// remembered membership, exactly as the app and live site keep them.
+const MEMBER = '00000000-0000-0000-0000-000000000001';
+const asMember = (page) =>
+  page.addInitScript((id) => {
+    const now = Math.floor(Date.now() / 1000);
+    localStorage.setItem(
+      'gra-covenant-auth',
+      JSON.stringify({ access_token: 'test', refresh_token: 'test', token_type: 'bearer', expires_in: 3600, expires_at: now + 3600,
+        user: { id, aud: 'authenticated', role: 'authenticated', email: 'member@test', app_metadata: {}, user_metadata: {}, created_at: '2026-10-01T00:00:00Z' } }),
+    );
+    localStorage.setItem('gra-covenant-member', JSON.stringify(id));
+  }, MEMBER);
 
 test('weekly prayers: current week, expand, past week', async ({ page }) => {
   const errors = [];
@@ -55,23 +70,47 @@ test('weekly prayers: shows a message when offline', async ({ page, context }) =
   await expect(page.getByText(/Couldn’t load the weekly prayers/)).toBeVisible({ timeout: 15_000 });
 });
 
-test.describe('book reader', () => {
-  test('is locked until signed in or unlocked with the access code', async ({ page }) => {
+test.describe('access', () => {
+  test('JCFP opens without signing in', async ({ page }) => {
+    await page.goto('app/#/book/jcfp');
+    await expect(page.getByRole('heading', { level: 1, name: /Jesus Chosen Fast and Prayer/ })).toBeVisible();
+    await expect(page.locator('.lock')).toHaveCount(0);
+  });
+
+  test('Covenant asks a signed-out reader to sign in, with no access-code option', async ({ page }) => {
     await page.goto('app/#/book/covenant');
-    await expect(page.getByRole('heading', { level: 1, name: 'Book of Covenant Prayers' })).toBeVisible();
+    await expect(page.locator('.lock')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign in', exact: true }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Create account' }).first().click();
     await expect(page.getByLabel('Registration code')).toBeVisible();
-    await page.getByRole('button', { name: 'Continue with access code' }).click();
-    await expect(page.getByRole('heading', { name: 'Use an access code' })).toBeVisible();
-    await page.getByLabel('Access code').fill('not the code');
-    await page.getByRole('button', { name: 'Open the book' }).click();
-    await expect(page.getByRole('alert')).toHaveText('That access code isn’t right.');
-    await expect(page.locator('.reader')).toHaveCount(0);
+    await expect(page.getByText('Continue with access code')).toHaveCount(0);
   });
 
-  test.describe('unlocked', () => {
-    test.beforeEach(({ page }) => unlock(page));
+  test('an old guest unlock no longer opens Covenant but keeps its progress', async ({ page }) => {
+    await page.addInitScript((h) => {
+      // A real live-site device: current layout, guest-unlocked, with progress.
+      localStorage.setItem('gra-covenant-layout', '3');
+      localStorage.setItem('gra-covenant-unlocked', h);
+      localStorage.setItem('gra-covenant-prayed', '{"s-1-1-1":1}');
+    }, UNLOCKED);
+    await page.goto('app/#/book/covenant');
+    await expect(page.locator('.lock')).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('gra-covenant-prayed'))).toBe('{"s-1-1-1":1}');
+  });
+
+  test('signed-out JCFP reader can open sign-in from Settings and dismiss it', async ({ page }) => {
+    await page.goto('app/#/book/jcfp');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Sign in or create account' }).click();
+    await expect(page.locator('.lock')).toBeVisible();
+    await page.getByRole('button', { name: 'Not now' }).click();
+    await expect(page.locator('.lock')).toHaveCount(0);
+  });
+});
+
+test.describe('book reader', () => {
+  test.describe('as a member', () => {
+    test.beforeEach(({ page }) => asMember(page));
 
     test('Covenant Prayers: contents, marking prayed, saved progress', async ({ page }) => {
       const errors = [];
@@ -158,7 +197,7 @@ const fakeSpeech = (page) =>
   });
 
 test.describe('Focused Mode and Listen', () => {
-  test.beforeEach(({ page }) => unlock(page));
+  test.beforeEach(({ page }) => asMember(page));
 
   test('Focused Mode: one prayer at a time, Amen · Next marks it prayed, timer, close', async ({ page }) => {
     await page.goto('app/#/book/covenant');
@@ -216,7 +255,10 @@ test.describe('Focused Mode and Listen', () => {
 // The app and the live site share progress (same storage keys), so nobody loses
 // anything when the app replaces the site.
 test.describe('shared progress with the live site', () => {
-  test.beforeEach(({ page }) => unlock(page));
+  test.beforeEach(async ({ page }) => {
+    await asMember(page);
+    await unlockLiveSite(page);
+  });
 
   test('a prayer marked in the app shows as prayed on the live Covenant page, and back', async ({ page }) => {
     await page.goto('app/#/book/covenant');

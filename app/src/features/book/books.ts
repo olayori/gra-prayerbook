@@ -14,16 +14,17 @@ export type BookConfig = {
   table: 'book_state' | 'library_state' // where synced progress lives
   verTable: 'book_versions' | 'lib_versions' // versions published from the Admin Console
   usage: boolean // counts prayers/opens for the admin insights
+  access: 'free' | 'members' // TODO(catalog phase 3): from get_book()
 }
 
 export const BOOKS: Record<BookKey, BookConfig> = {
   covenant: {
     key: 'covenant', title: 'Book of Covenant Prayers', secWord: 'Section', itemsLabel: 'Prayers', url: covenantUrl,
-    table: 'book_state', verTable: 'book_versions', usage: true,
+    table: 'book_state', verTable: 'book_versions', usage: true, access: 'members',
   },
   jcfp: {
     key: 'jcfp', title: 'Jesus Chosen Fast and Prayer Prayer Manual', secWord: 'Section', itemsLabel: 'Prayer', url: jcfpUrl,
-    table: 'library_state', verTable: 'lib_versions', usage: false,
+    table: 'library_state', verTable: 'lib_versions', usage: false, access: 'free',
   },
 }
 

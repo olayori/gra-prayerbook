@@ -228,9 +228,6 @@
 .lock-error { font-size: 14px; line-height: 1.45; color: var(--color-accent-700); }
 .lock-msg { font-size: 14px; line-height: 1.45; padding: 10px 12px; border: 1px solid var(--color-accent-300); border-radius: var(--radius-md); }
 .lock-link { all: unset; cursor: pointer; align-self: center; padding: 8px; font-size: 14px; color: var(--color-accent-700); }
-.lock-guest { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 14px; border-top: 1px solid var(--color-divider); }
-.lock-guest .btn { min-height: 44px; font-size: 15px; }
-.lock-guest span { font-size: 13px; line-height: 1.45; color: var(--color-neutral-700); }
 
 .account { display: flex; flex-direction: column; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--color-divider); }
 .account-row { display: flex; align-items: center; gap: 12px; }

@@ -3,14 +3,12 @@ import { createContext, useContext } from 'react'
 import { load, remove, save } from './storage.ts'
 import { supabase } from './supabase.ts'
 
-// Sign-in and the book gate, ported from design/src/book/app.js (initAuth, onSession,
-// authSubmit, signOut). The books open for members (an account that redeemed the GRA
-// registration code) or on this device with the shared access code.
-// TODO(entitlements): the access code is checked on the device against a public hash, so it
-// protects nothing; it is replaced when paid books arrive (docs/ARCHITECTURE.md §3).
-const HASH = 'e6a0edc6786aea7bad85cc9fec671bfa84763bd161c450a579df4b1087b5d270'
+// Sign-in and the members gate, ported from design/src/book/app.js (initAuth, onSession,
+// authSubmit, signOut). Members-only books open for accounts that redeemed the GRA
+// registration code; the server checks the code (redeem_code). Free books need no sign-in.
+// The shared guest access code was removed (catalog design, 2026-10-16).
 
-export type AuthMode = 'in' | 'up' | 'code' | 'reset' | 'newpw' | 'guest'
+export type AuthMode = 'in' | 'up' | 'code' | 'reset' | 'newpw'
 
 export type AuthState = {
   ready: boolean
@@ -24,18 +22,6 @@ export type AuthState = {
 }
 
 const member = () => load<string | null>('gra-covenant-member', null)
-export const isGuest = () => {
-  try {
-    return localStorage.getItem('gra-covenant-unlocked') === HASH
-  } catch {
-    return false
-  }
-}
-
-async function codeOk(c: string) {
-  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode((c || '').trim()))
-  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('') === HASH
-}
 
 function errText(e: unknown) {
   const m = (e as Error)?.message || ''
@@ -53,7 +39,7 @@ const here = () => location.origin + location.pathname
 const LOCAL_KEYS = ['prayed', 'fav', 'bookmarks', 'plan', 'ink', 'last', 'member', 'syncMeta', 'dirty', 'pendingCode', 'unlocked', 'hist', 'lastP', 'lastSess']
 
 class AuthStore {
-  state: AuthState = { ready: false, locked: !(member() || isGuest()), user: null, isAdmin: false, mode: 'in', busy: false, error: '', message: '' }
+  state: AuthState = { ready: false, locked: !member(), user: null, isAdmin: false, mode: 'in', busy: false, error: '', message: '' }
   private listeners = new Set<() => void>()
   private started = false
 
@@ -87,7 +73,7 @@ class AuthStore {
     if (this.state.mode === 'newpw' && ev !== 'USER_UPDATED') return
     const u = session?.user ?? null
     if (!u) {
-      if (ev === 'INIT' || ev === 'SIGNED_OUT') this.set({ ready: true, user: null, locked: !isGuest(), busy: false })
+      if (ev === 'INIT' || ev === 'SIGNED_OUT') this.set({ ready: true, user: null, locked: true, busy: false })
       else this.set({ ready: true })
       return
     }
@@ -128,21 +114,13 @@ class AuthStore {
       if (m === 'up') {
         if (!email) return fail('Enter your email.')
         if (pw.length < 8) return fail('Use a password of at least 8 characters.')
-        if (!(await codeOk(f.code))) return fail('That registration code isn’t right.')
+        if (!f.code.trim()) return fail('Enter the registration code from GRA.')
+        // Redeemed by the server once the account exists (onSession → redeem_code).
         save('gra-covenant-pendingCode', f.code.trim())
         const { data, error } = await supabase.auth.signUp({ email, password: pw, options: { data: { name: f.name.trim() }, emailRedirectTo: here() } })
         if (error) return fail(errText(error))
         if (!data.session) this.set({ busy: false, mode: 'in', message: `We sent a confirmation link to ${email}. Open it on this device to finish creating your account.` })
         return
-      }
-      if (m === 'guest') {
-        if (!(await codeOk(f.code))) return fail('That access code isn’t right.')
-        try {
-          localStorage.setItem('gra-covenant-unlocked', HASH)
-        } catch {
-          // private mode: unlocked for this visit only
-        }
-        return this.set({ locked: false, busy: false, mode: 'in' })
       }
       if (m === 'code') {
         const { data, error } = await supabase.rpc('redeem_code', { code: f.code.trim() })
@@ -182,8 +160,6 @@ class AuthStore {
     this.set({ user: null, isAdmin: false, locked: true, mode: 'in', error: '', message: '', busy: false })
   }
 
-  // Back to the sign-up form from a guest unlock (design: guestToAccount).
-  toAccount = () => this.set({ locked: true, mode: 'up', error: '', message: '' })
 }
 
 export const auth = new AuthStore()
