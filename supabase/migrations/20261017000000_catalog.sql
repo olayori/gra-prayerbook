@@ -175,3 +175,142 @@ create policy "read own library" on public.library_state for select to authentic
 create policy "insert own library" on public.library_state for insert to authenticated with check (auth.uid() = user_id);
 create policy "update own library" on public.library_state for update to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- =====================================================================
+-- 3. Editions, dated entries, and the live site's old tables as views
+-- =====================================================================
+
+-- Published book content. Version 0 is the edition bundled with the site and app; the
+-- Admin Console publishes 1, 2, … Readable only by people who may read the book.
+create table if not exists public.book_editions (
+  book_slug text not null references public.books (slug) on update cascade,
+  version int not null check (version >= 0),
+  data jsonb not null,
+  layout jsonb not null default '[]'::jsonb,
+  stats jsonb not null default '{}'::jsonb,
+  note text,
+  published_by uuid references auth.users on delete set null,
+  published_by_email text,
+  published_at timestamptz not null default now(),
+  primary key (book_slug, version)
+);
+alter table public.book_editions enable row level security;
+drop policy if exists "read editions you may read" on public.book_editions;
+create policy "read editions you may read" on public.book_editions for select using (public.can_read(book_slug));
+grant select on public.book_editions to anon, authenticated;
+
+-- Entries of dated books other than Weekly (Weekly keeps using weekly_prayers).
+create table if not exists public.book_entries (
+  book_slug text not null references public.books (slug) on update cascade,
+  entry_date date not null,
+  title text not null default '',
+  intro text not null default '',
+  items jsonb not null default '[]'::jsonb,
+  closing text not null default '',
+  publish_at timestamptz,
+  updated_by_email text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (book_slug, entry_date)
+);
+alter table public.book_entries enable row level security;
+drop policy if exists "read published entries" on public.book_entries;
+drop policy if exists "editors write entries" on public.book_entries;
+create policy "read published entries" on public.book_entries for select
+  using ((public.can_read(book_slug) and publish_at is not null and publish_at <= now()) or public.is_editor());
+create policy "editors write entries" on public.book_entries for all to authenticated
+  using (public.is_editor()) with check (public.is_editor());
+grant select on public.book_entries to anon, authenticated;
+grant insert, update, delete on public.book_entries to authenticated;
+drop trigger if exists book_entries_touch on public.book_entries;
+create trigger book_entries_touch before update on public.book_entries for each row execute function public.touch_updated_at();
+
+-- The live site and the old Admin Console read book_versions / lib_versions. They are
+-- empty in production, so they become views over book_editions (edition 0 hidden, so the
+-- live reader keeps its bundled book until a real edition is published).
+do $$
+begin
+  if exists (select 1 from pg_tables where schemaname = 'public' and tablename = 'book_versions') then
+    if (select count(*) from public.book_versions) > 0 then raise exception 'book_versions has rows; migrate them first'; end if;
+    drop table public.book_versions;
+  end if;
+  if exists (select 1 from pg_tables where schemaname = 'public' and tablename = 'lib_versions') then
+    if (select count(*) from public.lib_versions) > 0 then raise exception 'lib_versions has rows; migrate them first'; end if;
+    drop table public.lib_versions;
+  end if;
+end $$;
+
+create or replace view public.book_versions with (security_invoker = true) as
+  select version, data, layout, stats, note, published_by, published_by_email, published_at
+  from public.book_editions where book_slug = 'covenant' and version > 0;
+create or replace view public.lib_versions with (security_invoker = true) as
+  select book_slug as book, version, data, layout, stats, note, published_by, published_by_email, published_at
+  from public.book_editions where book_slug <> 'covenant' and version > 0;
+grant select on public.book_versions, public.lib_versions to anon, authenticated;
+
+-- Publish a new edition (editors). Drafts stay in book_draft (Covenant) / lib_draft.
+create or replace function public.publish_edition(p_slug text, p_note text, p_data jsonb, p_layout jsonb, p_stats jsonb)
+returns int language plpgsql security definer set search_path = '' as $$
+declare v int;
+begin
+  if not public.is_editor() then raise exception 'not allowed'; end if;
+  lock table public.book_editions in exclusive mode;
+  select coalesce(max(version), 0) + 1 into v from public.book_editions where book_slug = p_slug and version > 0;
+  insert into public.book_editions (book_slug, version, data, layout, stats, note, published_by, published_by_email)
+    values (p_slug, v, p_data, p_layout, coalesce(p_stats, '{}'::jsonb), nullif(btrim(p_note), ''), auth.uid(),
+            (select email from auth.users where id = auth.uid()));
+  if p_slug = 'covenant' then
+    insert into public.book_draft (id, data, log, base_version, updated_by) values (1, p_data, '[]', v, auth.uid())
+      on conflict (id) do update set data = excluded.data, log = '[]', base_version = v, updated_by = auth.uid();
+  else
+    insert into public.lib_draft (book, data, log, base_version, updated_by) values (p_slug, p_data, '[]', v, auth.uid())
+      on conflict (book) do update set data = excluded.data, log = '[]', base_version = v, updated_by = auth.uid();
+  end if;
+  return v;
+end $$;
+revoke all on function public.publish_edition(text, text, jsonb, jsonb, jsonb) from public, anon;
+grant execute on function public.publish_edition(text, text, jsonb, jsonb, jsonb) to authenticated;
+
+-- The old Admin Console's publish calls keep working.
+create or replace function public.publish_book(p_note text, p_data jsonb, p_layout jsonb, p_stats jsonb) returns int
+language sql security definer set search_path = '' as $$
+  select public.publish_edition('covenant', p_note, p_data, p_layout, p_stats)
+$$;
+create or replace function public.publish_lib(p_book text, p_note text, p_data jsonb, p_layout jsonb, p_stats jsonb) returns int
+language sql security definer set search_path = '' as $$
+  select public.publish_edition(p_book, p_note, p_data, p_layout, p_stats)
+$$;
+
+-- Newest edition of a book: { slug, version, layout, data }, or null if it has none.
+create or replace function public.get_edition(p_slug text) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.can_read(p_slug) then raise exception 'locked' using errcode = '42501'; end if;
+  return (
+    select jsonb_build_object('slug', e.book_slug, 'version', e.version, 'layout', e.layout, 'data', e.data)
+    from public.book_editions e where e.book_slug = p_slug order by e.version desc limit 1
+  );
+end $$;
+revoke all on function public.get_edition(text) from public;
+grant execute on function public.get_edition(text) to anon, authenticated;
+
+-- Published entries of a dated book, newest first: [{ entry_date, title, intro, items, closing }].
+create or replace function public.get_entries(p_slug text) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.can_read(p_slug) then raise exception 'locked' using errcode = '42501'; end if;
+  if p_slug = 'weekly' then
+    return coalesce((
+      select jsonb_agg(jsonb_build_object('entry_date', w.week_of, 'title', w.title, 'intro', w.intro, 'items', w.prayers, 'closing', w.closing)
+                       order by w.week_of desc)
+      from public.weekly_prayers w where w.publish_at is not null and w.publish_at <= now()
+    ), '[]'::jsonb);
+  end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object('entry_date', e.entry_date, 'title', e.title, 'intro', e.intro, 'items', e.items, 'closing', e.closing)
+                     order by e.entry_date desc)
+    from public.book_entries e where e.book_slug = p_slug and e.publish_at is not null and e.publish_at <= now()
+  ), '[]'::jsonb);
+end $$;
+revoke all on function public.get_entries(text) from public;
+grant execute on function public.get_entries(text) to anon, authenticated;
