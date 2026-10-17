@@ -1,0 +1,28 @@
+{
+  "name": "overcomers",
+  "private": true,
+  "description": "Overcomer’s Library — GRA prayer library (web/PWA, Supabase backend)",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "check": "node scripts/check-site.mjs",
+    "test": "playwright test",
+    "verify": "npm run check && npm test",
+    "design:pull": "node scripts/pull-design.mjs",
+    "design:extract": "node scripts/extract-design.mjs",
+    "db:new": "supabase migration new",
+    "db:status": "npm run -s db:link && supabase migration list --linked",
+    "db:deploy": "bash scripts/deploy-db.sh",
+    "web:deploy": "bash scripts/deploy-web.sh",
+    "deploy": "npm run db:deploy && npm run web:deploy",
+    "db:baseline": "npm run -s db:link && supabase migration repair --status applied 20261013000000 --linked",
+    "db:link": "[ -f supabase/.temp/project-ref ] || supabase link --project-ref sjcosqxtgllfwldhnoax"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "supabase": "^2.121.0"
+  }
+}

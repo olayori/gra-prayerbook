@@ -1,0 +1,113 @@
+{
+  "title": "Overcomer’s Library",
+  "assets": [
+    {
+      "name": "js-1",
+      "mime": "text/javascript",
+      "bytes": 69150,
+      "sha256": "8fe7df74405f3c55"
+    },
+    {
+      "name": "js-2",
+      "mime": "application/javascript",
+      "bytes": 36933,
+      "sha256": "2dcaef032224ee3b"
+    },
+    {
+      "name": "react-dom.production.min.js",
+      "mime": "text/javascript",
+      "bytes": 131835,
+      "sha256": "35f4f974f4b2bcd4"
+    },
+    {
+      "name": "react.production.min.js",
+      "mime": "text/javascript",
+      "bytes": 10751,
+      "sha256": "d949f1c3687aedad"
+    },
+    {
+      "name": "webp-1",
+      "mime": "image/webp",
+      "bytes": 8100,
+      "sha256": "7b49dad64fc68000"
+    },
+    {
+      "name": "webp-2",
+      "mime": "image/webp",
+      "bytes": 8086,
+      "sha256": "598fcad2c2bfb6cc"
+    },
+    {
+      "name": "woff2-1",
+      "mime": "font/woff2",
+      "bytes": 23408,
+      "sha256": "d04439363ec80513"
+    },
+    {
+      "name": "woff2-10",
+      "mime": "font/woff2",
+      "bytes": 8908,
+      "sha256": "a9149daf82ca5fef"
+    },
+    {
+      "name": "woff2-11",
+      "mime": "font/woff2",
+      "bytes": 20176,
+      "sha256": "55606fbc76dc232c"
+    },
+    {
+      "name": "woff2-12",
+      "mime": "font/woff2",
+      "bytes": 37792,
+      "sha256": "6b102ab35aa1f2b3"
+    },
+    {
+      "name": "woff2-2",
+      "mime": "font/woff2",
+      "bytes": 21132,
+      "sha256": "d81372bae1f872f1"
+    },
+    {
+      "name": "woff2-3",
+      "mime": "font/woff2",
+      "bytes": 11264,
+      "sha256": "826f73ca737feec0"
+    },
+    {
+      "name": "woff2-4",
+      "mime": "font/woff2",
+      "bytes": 33740,
+      "sha256": "9dc38267bdee93a6"
+    },
+    {
+      "name": "woff2-5",
+      "mime": "font/woff2",
+      "bytes": 37776,
+      "sha256": "5d618c462b7a5b74"
+    },
+    {
+      "name": "woff2-6",
+      "mime": "font/woff2",
+      "bytes": 23588,
+      "sha256": "d0d358cfccfcf0e3"
+    },
+    {
+      "name": "woff2-7",
+      "mime": "font/woff2",
+      "bytes": 21252,
+      "sha256": "66e1b8c7c49c2835"
+    },
+    {
+      "name": "woff2-8",
+      "mime": "font/woff2",
+      "bytes": 29236,
+      "sha256": "8fd95cb66c53d5f2"
+    },
+    {
+      "name": "woff2-9",
+      "mime": "font/woff2",
+      "bytes": 17280,
+      "sha256": "367df5ed02b082e3"
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "title": "Overcomer’s Library",
+  "assets": [
+    {
+      "name": "jcfpData",
+      "mime": "application/json",
+      "bytes": 51027,
+      "sha256": "f9bf5e9b030f07b1"
+    },
+    {
+      "name": "js-1",
+      "mime": "text/javascript",
+      "bytes": 69150,
+      "sha256": "8fe7df74405f3c55"
+    },
+    {
+      "name": "js-2",
+      "mime": "application/javascript",
+      "bytes": 36933,
+      "sha256": "2dcaef032224ee3b"
+    },
+    {
+      "name": "prayersData",
+      "mime": "application/json",
+      "bytes": 258455,
+      "sha256": "8e0896e280775e46"
+    },
+    {
+      "name": "react-dom.production.min.js",
+      "mime": "text/javascript",
+      "bytes": 131835,
+      "sha256": "35f4f974f4b2bcd4"
+    },
+    {
+      "name": "react.production.min.js",
+      "mime": "text/javascript",
+      "bytes": 10751,
+      "sha256": "d949f1c3687aedad"
+    },
+    {
+      "name": "webp-1",
+      "mime": "image/webp",
+      "bytes": 25642,
+      "sha256": "d839ec3df25368c8"
+    },
+    {
+      "name": "webp-2",
+      "mime": "image/webp",
+      "bytes": 27238,
+      "sha256": "e505f9343bd97d3b"
+    },
+    {
+      "name": "webp-3",
+      "mime": "image/webp",
+      "bytes": 8100,
+      "sha256": "7b49dad64fc68000"
+    },
+    {
+      "name": "webp-4",
+      "mime": "image/webp",
+      "bytes": 8086,
+      "sha256": "598fcad2c2bfb6cc"
+    },
+    {
+      "name": "webp-5",
+      "mime": "image/webp",
+      "bytes": 14418,
+      "sha256": "c2932b6b1f698008"
+    },
+    {
+      "name": "webp-6",
+      "mime": "image/webp",
+      "bytes": 14668,
+      "sha256": "dce8b3fecc55174c"
+    },
+    {
+      "name": "woff2-1",
+      "mime": "font/woff2",
+      "bytes": 23408,
+      "sha256": "d04439363ec80513"
+    },
+    {
+      "name": "woff2-10",
+      "mime": "font/woff2",
+      "bytes": 8908,
+      "sha256": "a9149daf82ca5fef"
+    },
+    {
+      "name": "woff2-11",
+      "mime": "font/woff2",
+      "bytes": 20176,
+      "sha256": "55606fbc76dc232c"
+    },
+    {
+      "name": "woff2-12",
+      "mime": "font/woff2",
+      "bytes": 37792,
+      "sha256": "6b102ab35aa1f2b3"
+    },
+    {
+      "name": "woff2-13",
+      "mime": "font/woff2",
+      "bytes": 13760,
+      "sha256": "29ec794c821eb116"
+    },
+    {
+      "name": "woff2-14",
+      "mime": "font/woff2",
+      "bytes": 12512,
+      "sha256": "e4e83060826fa860"
+    },
+    {
+      "name": "woff2-15",
+      "mime": "font/woff2",
+      "bytes": 6176,
+      "sha256": "7946c43c359b0c93"
+    },
+    {
+      "name": "woff2-16",
+      "mime": "font/woff2",
+      "bytes": 19304,
+      "sha256": "edd79daead84d020"
+    },
+    {
+      "name": "woff2-17",
+      "mime": "font/woff2",
+      "bytes": 22388,
+      "sha256": "c4aef5d2c6f5f50b"
+    },
+    {
+      "name": "woff2-18",
+      "mime": "font/woff2",
+      "bytes": 6088,
+      "sha256": "fde16438f63b803e"
+    },
+    {
+      "name": "woff2-19",
+      "mime": "font/woff2",
+      "bytes": 12068,
+      "sha256": "5ee711c886e47940"
+    },
+    {
+      "name": "woff2-2",
+      "mime": "font/woff2",
+      "bytes": 21132,
+      "sha256": "d81372bae1f872f1"
+    },
+    {
+      "name": "woff2-20",
+      "mime": "font/woff2",
+      "bytes": 5768,
+      "sha256": "e15e89caea888e8d"
+    },
+    {
+      "name": "woff2-21",
+      "mime": "font/woff2",
+      "bytes": 11208,
+      "sha256": "a60206dd4793eb88"
+    },
+    {
+      "name": "woff2-22",
+      "mime": "font/woff2",
+      "bytes": 5800,
+      "sha256": "69b1029853229409"
+    },
+    {
+      "name": "woff2-23",
+      "mime": "font/woff2",
+      "bytes": 11364,
+      "sha256": "1cc7c0c5fbf16d1b"
+    },
+    {
+      "name": "woff2-3",
+      "mime": "font/woff2",
+      "bytes": 11264,
+      "sha256": "826f73ca737feec0"
+    },
+    {
+      "name": "woff2-4",
+      "mime": "font/woff2",
+      "bytes": 33740,
+      "sha256": "9dc38267bdee93a6"
+    },
+    {
+      "name": "woff2-5",
+      "mime": "font/woff2",
+      "bytes": 37776,
+      "sha256": "5d618c462b7a5b74"
+    },
+    {
+      "name": "woff2-6",
+      "mime": "font/woff2",
+      "bytes": 23588,
+      "sha256": "d0d358cfccfcf0e3"
+    },
+    {
+      "name": "woff2-7",
+      "mime": "font/woff2",
+      "bytes": 21252,
+      "sha256": "66e1b8c7c49c2835"
+    },
+    {
+      "name": "woff2-8",
+      "mime": "font/woff2",
+      "bytes": 29236,
+      "sha256": "8fd95cb66c53d5f2"
+    },
+    {
+      "name": "woff2-9",
+      "mime": "font/woff2",
+      "bytes": 17280,
+      "sha256": "367df5ed02b082e3"
+    }
+  ]
+}

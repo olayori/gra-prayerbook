@@ -1,0 +1,35 @@
+{
+  "feel": {
+    "editor": "enum",
+    "options": [
+      "Soft",
+      "Editorial",
+      "Luminous"
+    ],
+    "default": "Soft",
+    "tsType": "'Soft'|'Editorial'|'Luminous'",
+    "section": "Feel"
+  },
+  "motion": {
+    "editor": "enum",
+    "options": [
+      "Calm",
+      "Lively",
+      "Still"
+    ],
+    "default": "Calm",
+    "tsType": "'Calm'|'Lively'|'Still'",
+    "section": "Feel"
+  },
+  "density": {
+    "editor": "enum",
+    "options": [
+      "Airy",
+      "Comfortable",
+      "Compact"
+    ],
+    "default": "Comfortable",
+    "tsType": "'Airy'|'Comfortable'|'Compact'",
+    "section": "Feel"
+  }
+}

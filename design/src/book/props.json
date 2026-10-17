@@ -1,0 +1,18 @@
+{
+  "showChecks": {
+    "editor": "boolean",
+    "default": true,
+    "tsType": "boolean"
+  },
+  "book": {
+    "editor": "enum",
+    "options": [
+      "covenant",
+      "jcfp",
+      "weekly"
+    ],
+    "default": "covenant",
+    "tsType": "'covenant' | 'jcfp' | 'weekly'",
+    "section": "Preview"
+  }
+}
